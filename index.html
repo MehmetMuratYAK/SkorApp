@@ -12,7 +12,21 @@
         <p>Kağıt ve Kutu Oyunları Çetelesi</p>
         
         <div id="app-content">
-            <button id="start-btn" class="btn-primary">Oyuna Başla / Giriş Yap</button>
+            <div id="home-screen">
+                <button id="start-btn" class="btn-primary">Hızlı Oyun Başlat</button>
+            </div>
+
+            <div id="setup-screen" style="display: none;">
+                <h2>Oyuncuları Ekle</h2>
+                <div class="input-group">
+                    <input type="text" id="player-name" placeholder="Oyuncu Adı (Örn: Ahmet)">
+                    <button id="add-player-btn" class="btn-secondary">Ekle</button>
+                </div>
+                
+                <ul id="player-list"></ul>
+                
+                <button id="start-match-btn" class="btn-primary" style="display: none;">Masa Hazır, Başla!</button>
+            </div>
         </div>
         
         <div id="status-message">Firebase bağlantısı bekleniyor...</div>
