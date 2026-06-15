@@ -27,10 +27,18 @@
             </div>
 
             <div id="game-screen" style="display: none;">
-                <h2>Skor Tablosu</h2>
-                <div id="score-board">
-                    </div>
-                <button id="end-game-btn" class="btn-primary" style="margin-top: 20px; background-color: #ff4c4c;">Oyunu Bitir</button>
+                <div class="table-responsive">
+                    <table id="score-table">
+                        <thead id="score-thead"></thead>
+                        <tbody id="score-tbody"></tbody>
+                        <tfoot id="score-tfoot"></tfoot>
+                    </table>
+                </div>
+                
+                <div class="game-controls">
+                    <button id="new-round-btn" class="btn-secondary" style="width: 100%; padding: 12px; margin-bottom: 10px;">➕ Yeni El (Tur) Ekle</button>
+                    <button id="end-game-btn" class="btn-primary" style="background-color: #ff4c4c;">Oyunu Bitir</button>
+                </div>
             </div>
         </div>
         
