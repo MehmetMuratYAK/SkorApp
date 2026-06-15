@@ -16,13 +16,14 @@ document.getElementById("status-message").style.color = "#1c7b64";
 
 let players = []; 
 let rounds = []; 
-let pastParties = []; // YENİ: Geçmiş partilerin toplam skorlarını matris olarak tutar
+let pastParties = []; 
 let currentParty = 1;
 
 const homeScreen = document.getElementById("home-screen");
 const setupScreen = document.getElementById("setup-screen");
 const gameScreen = document.getElementById("game-screen");
 const endScreen = document.getElementById("end-screen");
+const summaryScreen = document.getElementById("summary-screen"); // YENİ EKRAN
 const podium = document.getElementById("podium");
 
 const startBtn = document.getElementById("start-btn");
@@ -34,12 +35,16 @@ const gameSettingsArea = document.getElementById("game-settings-area");
 
 const winConditionSelect = document.getElementById("win-condition");
 const targetScoreInput = document.getElementById("target-score");
+const statTypeSelect = document.getElementById("stat-type"); // YENİ SELECTION
 const partyTitle = document.getElementById("party-title");
 const liveSeriesScore = document.getElementById("live-series-score");
 const manualEndBtn = document.getElementById("manual-end-btn");
 const nextPartyBtn = document.getElementById("next-party-btn");
 const endCompletelyBtn = document.getElementById("end-completely-btn");
 const seriesScoreList = document.getElementById("series-score-list");
+const gameCountInfo = document.getElementById("game-count-info");
+const summaryList = document.getElementById("summary-list");
+const finalRestartBtn = document.getElementById("final-restart-btn");
 
 startBtn.addEventListener("click", () => {
     homeScreen.style.display = "none";
@@ -49,7 +54,8 @@ startBtn.addEventListener("click", () => {
 addPlayerBtn.addEventListener("click", () => {
     const name = playerNameInput.value.trim();
     if(name !== "") {
-        players.push({ name: name, wins: 0 }); 
+        // YENİ: placements nesnesi ile kim kaçıncı oldu tek tek sayacağız
+        players.push({ name: name, wins: 0, placements: {} }); 
         playerNameInput.value = ""; 
         updateList(); 
     }
@@ -85,35 +91,29 @@ startMatchBtn.addEventListener("click", () => {
 function startParty() {
     gameScreen.style.display = "block";
     endScreen.style.display = "none";
+    summaryScreen.style.display = "none";
     partyTitle.innerText = `${currentParty}. Parti Oynanıyor`;
     nextPartyBtn.innerText = `${currentParty + 1}. Parti'ye Geç`;
     
-    // ÜST PANEL: GENEL SKOR VE GEÇMİŞ PARTİLERİN RENKLİ GÖSTERİMİ
     let winCondition = winConditionSelect.value;
     let panelHTML = `<div style="font-weight: bold; text-align: center; margin-bottom: 8px; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; color:#2c4d61;">🏆 GENEL SERİ: ${players.map(p => `${p.name}: ${p.wins}`).join(' - ')}</div>`;
     
     if (pastParties.length > 0) {
         panelHTML += `<div style="font-size: 13px; display: flex; flex-direction: column; gap: 4px;">`;
         pastParties.forEach((partyTotals, index) => {
-            // O partideki en yüksek ve en düşük skorları buluyoruz
             let maxScore = Math.max(...partyTotals);
             let minScore = Math.min(...partyTotals);
-            
-            // Kazanma kuralına göre galip/mağlup skorunu netleştiriyoruz
             let winnerValue = winCondition === "high" ? maxScore : minScore;
             let loserValue = winCondition === "high" ? minScore : maxScore;
             
             let partyRow = `<strong>${index + 1}. Parti:</strong> `;
             let playerStrings = players.map((p, pIndex) => {
                 let score = partyTotals[pIndex];
-                let colorStyle = "color: #333;"; // Varsayılan nötr renk
-                
-                if (score === winnerValue) colorStyle = "color: #1c7b64; font-weight: bold;"; // KAZANAN YEŞİL
-                else if (score === loserValue) colorStyle = "color: #e74c3c; font-weight: bold;"; // KAYBEDEN KIRMIZI
-                
+                let colorStyle = "color: #333;";
+                if (score === winnerValue) colorStyle = "color: #1c7b64; font-weight: bold;";
+                else if (score === loserValue) colorStyle = "color: #e74c3c; font-weight: bold;";
                 return `${p.name}: <span style="${colorStyle}">${score}</span>`;
             });
-            
             partyRow += playerStrings.join(', ');
             panelHTML += `<div>${partyRow}</div>`;
         });
@@ -123,7 +123,6 @@ function startParty() {
     }
     
     liveSeriesScore.innerHTML = panelHTML;
-    
     rounds = [ players.map(() => []) ];
     renderTable();
 }
@@ -168,13 +167,11 @@ function renderTable() {
     });
 
     tfoot.innerHTML = `<tr><th>TOPLAM</th>${totals.map(t => `<th>${t}</th>`).join('')}</tr>`;
-    
     return totals; 
 }
 
 window.addScoreToCell = function(rIndex, pIndex) {
     let points = prompt(`${rIndex + 1}. El - ${players[pIndex].name} için puan girin:`); 
-    
     if (points !== null && points.trim() !== "") {
         let parsed = parseInt(points);
         if (!isNaN(parsed)) {
@@ -223,7 +220,6 @@ function endParty() {
     gameScreen.style.display = "none";
     endScreen.style.display = "block";
     
-    // Mevcut partinin toplam skorlarını orijinal sırayla hesaplayıp geçmiş kütüğüne (pastParties) ekliyoruz
     let partyTotalsOrdered = players.map((p, i) => {
         let totalScore = 0;
         rounds.forEach(round => {
@@ -233,7 +229,7 @@ function endParty() {
         });
         return totalScore;
     });
-    pastParties.push(partyTotalsOrdered); // Hafızaya alındı!
+    pastParties.push(partyTotalsOrdered); 
 
     let totals = players.map((p, i) => {
         return { originalIndex: i, name: p.name, score: partyTotalsOrdered[i] };
@@ -246,6 +242,13 @@ function endParty() {
         totals.sort((a, b) => a.score - b.score); 
     }
     
+    // YENİ: KIM KAÇINCI OLDU HAFIZAYA KAYDET
+    totals.forEach((player, index) => {
+        let rank = index + 1;
+        let playerObj = players[player.originalIndex];
+        playerObj.placements[rank] = (playerObj.placements[rank] || 0) + 1;
+    });
+
     let winnerIndex = totals[0].originalIndex;
     players[winnerIndex].wins += 1;
     
@@ -282,8 +285,53 @@ nextPartyBtn.addEventListener("click", () => {
     startParty(); 
 });
 
+// YENİ: GENEL ÖZETİ HESAPLAMA VE EKRANA BASMA (OYUNU BİTİR BUTONU)
 endCompletelyBtn.addEventListener("click", () => {
-    if(confirm("Tüm seriyi bitirip ana ekrana dönmek istediğinize emin misiniz?")) {
-        location.reload(); 
+    if(confirm("Tüm turnuvayı bitirip genel oyuncu istatistik özetini görmek istiyor musunuz?")) {
+        endScreen.style.display = "none";
+        summaryScreen.style.display = "block";
+        
+        // 1. Oyun sayma mantığına göre toplam oyun sayısını hesapla
+        const statType = statTypeSelect.value;
+        let totalGamesCount = 0;
+        if (statType === "per-party") {
+            totalGamesCount = pastParties.length; // Oynanan parti sayısı kadar oyun
+        } else {
+            totalGamesCount = pastParties.length > 0 ? 1 : 0; // Tüm turnuva tek bir oyun
+        }
+        
+        gameCountInfo.innerText = `🎮 Toplam Değerlendirilen Oyun Sayısı: ${totalGamesCount}`;
+        
+        // 2. Oyuncu özet kartlarını oluştur
+        summaryList.innerHTML = "";
+        players.forEach(p => {
+            let placementBadges = [];
+            
+            // Masadaki oyuncu sayısı kadar sıralama ihtimali vardır
+            for (let i = 1; i <= players.length; i++) {
+                let count = p.placements[i] || 0;
+                if (count > 0) {
+                    placementBadges.push(`<span style="background: #eaf2f8; color: #2980b9; padding: 4px 10px; border-radius: 6px; border: 1px solid #d4e6f1; font-size: 13px; font-weight: bold;">${i}.lik: ${count} Kez</span>`);
+                }
+            }
+            
+            if(placementBadges.length === 0) {
+                placementBadges.push(`<span style="color:#7f8c8d; font-style:italic; font-size:13px;">Hiçbir veri kaydedilmedi</span>`);
+            }
+            
+            summaryList.innerHTML += `
+                <div style="background: #ffffff; border: 1px solid #dee2e6; padding: 15px; border-radius: 12px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                    <strong style="color: #1c7b64; font-size: 16px; display: block; margin-bottom: 8px;">👤 ${p.name}</strong>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+                        ${placementBadges.join('')}
+                    </div>
+                    <div style="font-size: 13px; color: #7f8c8d; font-weight: 500;">🏆 Toplam Parti Galibiyeti: ${p.wins}</div>
+                </div>
+            `;
+        });
     }
+});
+
+finalRestartBtn.addEventListener("click", () => {
+    location.reload(); 
 });
