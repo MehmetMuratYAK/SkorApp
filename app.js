@@ -14,10 +14,9 @@ const app = initializeApp(firebaseConfig);
 document.getElementById("status-message").innerText = "✅ Sistem Hazır";
 document.getElementById("status-message").style.color = "#4CAF50";
 
-// OYUNCU DEPOSU (Artık isim ve skor tutuyor)
+// OYUNCU DEPOSU (Artık isim, toplam puan ve geçmiş listesi tutuyor)
 let players = []; 
 
-// EKRAN SEÇİMLERİ
 const homeScreen = document.getElementById("home-screen");
 const setupScreen = document.getElementById("setup-screen");
 const gameScreen = document.getElementById("game-screen");
@@ -30,24 +29,21 @@ const startMatchBtn = document.getElementById("start-match-btn");
 const scoreBoard = document.getElementById("score-board");
 const endGameBtn = document.getElementById("end-game-btn");
 
-// EKRAN 1 -> EKRAN 2
 startBtn.addEventListener("click", () => {
     homeScreen.style.display = "none";
     setupScreen.style.display = "block";
 });
 
-// OYUNCU EKLEME
 addPlayerBtn.addEventListener("click", () => {
     const name = playerNameInput.value.trim();
     if(name !== "") {
-        // Yeni oyuncuyu sıfır puanla listeye ekliyoruz
-        players.push({ name: name, score: 0 }); 
+        // YENİ: history adında boş bir liste ekledik
+        players.push({ name: name, total: 0, history: [] }); 
         playerNameInput.value = ""; 
         updateList(); 
     }
 });
 
-// KURULUM LİSTESİNİ GÜNCELLE
 function updateList() {
     playerList.innerHTML = ""; 
     players.forEach((player, index) => {
@@ -68,58 +64,80 @@ window.removePlayer = function(index) {
     updateList();
 }
 
-// EKRAN 2 -> EKRAN 3 (OYUN BAŞLIYOR)
 startMatchBtn.addEventListener("click", () => {
     setupScreen.style.display = "none";
     gameScreen.style.display = "block";
-    renderScoreBoard(); // Skor tablosunu çiz
+    renderScoreBoard(); 
 });
 
-// SKOR TABLOSUNU ÇİZME FONKSİYONU
+// SKOR TABLOSUNU ÇİZ
 function renderScoreBoard() {
-    scoreBoard.innerHTML = ""; // Önce ekranı temizle
+    scoreBoard.innerHTML = ""; 
     
-    // Her oyuncu için bir kart oluştur
     players.forEach((player, index) => {
+        // YENİ: Oyuncunun geçmişini satır satır HTML'e çeviriyoruz
+        let historyHTML = "";
+        player.history.forEach((point, roundIndex) => {
+            let typeClass = point >= 0 ? "positive" : "negative";
+            let sign = point > 0 ? "+" : ""; // Sadece pozitifse + koy
+            historyHTML += `
+                <div class="history-item ${typeClass}">
+                    <span>Tur ${roundIndex + 1}</span>
+                    <span>${sign}${point}</span>
+                </div>
+            `;
+        });
+
+        // Geçmiş boşsa bilgi yazısı koy
+        if(historyHTML === "") {
+            historyHTML = `<div class="empty-history">Henüz puan girilmedi</div>`;
+        }
+
         const card = document.createElement("div");
         card.className = "score-card";
         card.innerHTML = `
-            <div class="player-info">
-                <div class="player-name">${player.name}</div>
-                <div class="player-score">${player.score}</div>
+            <div class="card-header">
+                <div class="player-info">
+                    <div class="player-name">${player.name}</div>
+                    <div class="player-score">${player.total}</div>
+                </div>
+                <div class="score-controls">
+                    <button class="btn-score btn-minus" onclick="changeScore(${index}, 'minus')">-</button>
+                    <button class="btn-score btn-plus" onclick="changeScore(${index}, 'plus')">+</button>
+                </div>
             </div>
-            <div class="score-controls">
-                <button class="btn-score btn-minus" onclick="changeScore(${index}, 'minus')">-</button>
-                <button class="btn-score btn-plus" onclick="changeScore(${index}, 'plus')">+</button>
+            <div class="score-history">
+                ${historyHTML}
             </div>
         `;
         scoreBoard.appendChild(card);
     });
 }
 
-// PUAN DEĞİŞTİRME MANTIĞI
+// PUAN DEĞİŞTİRME VE GEÇMİŞE YAZMA
 window.changeScore = function(index, type) {
-    // Kullanıcıya kaç puan ekleneceğini/çıkacağını soruyoruz
     let points = prompt("Kaç puan?", "10"); 
     
     if (points !== null && points !== "") {
         let parsedPoints = parseInt(points);
         
         if (!isNaN(parsedPoints)) {
-            // Artı mı eksi mi basıldı kontrol et
-            if (type === 'plus') {
-                players[index].score += parsedPoints;
-            } else {
-                players[index].score -= parsedPoints;
-            }
-            renderScoreBoard(); // Ekranı yeni puanlarla güncelle
+            // YENİ: Puanı eksi veya artı olarak ayarla
+            let finalPoint = type === 'plus' ? parsedPoints : -Math.abs(parsedPoints);
+            
+            // 1. Puanı geçmişe (log) ekle
+            players[index].history.push(finalPoint);
+            
+            // 2. Geçmişteki tüm puanları toplayarak GÜNCEL TOTALİ bul
+            players[index].total = players[index].history.reduce((a, b) => a + b, 0);
+
+            renderScoreBoard(); // Ekranı güncelle
         } else {
             alert("Lütfen sadece rakam girin!");
         }
     }
 }
 
-// OYUNU BİTİR
 endGameBtn.addEventListener("click", () => {
     alert("Oyun bitti! Sonuç ekranı yapım aşamasında...");
 });
