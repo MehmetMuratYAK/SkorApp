@@ -14,7 +14,6 @@ const app = initializeApp(firebaseConfig);
 document.getElementById("status-message").innerText = "✅ Sistem Hazır";
 document.getElementById("status-message").style.color = "#1c7b64";
 
-// YENİ: Parti Numarası ve Galibiyet Hafızası (wins: 0)
 let players = []; 
 let rounds = []; 
 let currentParty = 1;
@@ -35,6 +34,7 @@ const gameSettingsArea = document.getElementById("game-settings-area");
 const winConditionSelect = document.getElementById("win-condition");
 const targetScoreInput = document.getElementById("target-score");
 const partyTitle = document.getElementById("party-title");
+const liveSeriesScore = document.getElementById("live-series-score"); // YENİ ELEMAN
 const manualEndBtn = document.getElementById("manual-end-btn");
 const nextPartyBtn = document.getElementById("next-party-btn");
 const endCompletelyBtn = document.getElementById("end-completely-btn");
@@ -48,7 +48,7 @@ startBtn.addEventListener("click", () => {
 addPlayerBtn.addEventListener("click", () => {
     const name = playerNameInput.value.trim();
     if(name !== "") {
-        players.push({ name: name, wins: 0 }); // YENİ: Oyuncular 0 galibiyetle başlar
+        players.push({ name: name, wins: 0 }); 
         playerNameInput.value = ""; 
         updateList(); 
     }
@@ -81,12 +81,14 @@ startMatchBtn.addEventListener("click", () => {
     startParty();
 });
 
-// PARTİ BAŞLATMA FONKSİYONU
 function startParty() {
     gameScreen.style.display = "block";
     endScreen.style.display = "none";
     partyTitle.innerText = `${currentParty}. Parti Oynanıyor`;
     nextPartyBtn.innerText = `${currentParty + 1}. Parti'ye Geç`;
+    
+    // YENİ: Oyun oynanırken üstteki gri kutuda genel galibiyet serisini gösteriyoruz
+    liveSeriesScore.innerHTML = players.map(p => `<div>${p.name}: <span style="color:#1c7b64; font-size:16px;">${p.wins}</span></div>`).join('<div style="color:#ccc">|</div>');
     
     rounds = [ players.map(() => []) ];
     renderTable();
@@ -133,7 +135,7 @@ function renderTable() {
 
     tfoot.innerHTML = `<tr><th>TOPLAM</th>${totals.map(t => `<th>${t}</th>`).join('')}</tr>`;
     
-    return totals; // Toplamları hesaplayıp dışarı veriyoruz ki Hakem kontrol etsin
+    return totals; 
 }
 
 window.addScoreToCell = function(rIndex, pIndex) {
@@ -144,7 +146,7 @@ window.addScoreToCell = function(rIndex, pIndex) {
         if (!isNaN(parsed)) {
             rounds[rIndex][pIndex].push(parsed);
             let currentTotals = renderTable(); 
-            checkAutoEnd(currentTotals); // YENİ: Hakem kontrolü
+            checkAutoEnd(currentTotals); 
         } else {
             alert("Lütfen sadece rakam girin!");
         }
@@ -156,14 +158,12 @@ document.getElementById("new-round-btn").addEventListener("click", () => {
     renderTable();
 });
 
-// YENİ: OTOMATİK HAKEM (Hedefe ulaşıldı mı?)
 function checkAutoEnd(totals) {
     let target = parseInt(targetScoreInput.value);
     if (!isNaN(target)) {
         let winCondition = winConditionSelect.value;
         let isGameOver = false;
 
-        // Hedefe ulaşan / hedefi aşan var mı?
         if (winCondition === "high") {
             isGameOver = totals.some(t => t >= target);
         } else {
@@ -174,19 +174,17 @@ function checkAutoEnd(totals) {
             setTimeout(() => {
                 alert(`Hedef puana (${target}) ulaşıldı! ${currentParty}. Parti Sona Erdi.`);
                 endParty();
-            }, 300); // Tablo çizildikten hemen sonra çalışması için çok kısa gecikme
+            }, 300); 
         }
     }
 }
 
-// MANUEL BİTİR BUTONU
 manualEndBtn.addEventListener("click", () => {
     if(confirm("Bu partiyi bitirip sonuçları görmek istediğinize emin misiniz?")) {
         endParty();
     }
 });
 
-// PARTİYİ BİTİRME VE HESAPLAMA MANTIĞI
 function endParty() {
     gameScreen.style.display = "none";
     endScreen.style.display = "block";
@@ -208,11 +206,9 @@ function endParty() {
         totals.sort((a, b) => a.score - b.score); 
     }
     
-    // ŞAMPİYONA 1 GALİBİYET YAZ
     let winnerIndex = totals[0].originalIndex;
     players[winnerIndex].wins += 1;
     
-    // PODYUMU ÇİZ
     podium.innerHTML = "";
     totals.forEach((player, index) => {
         let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
@@ -227,7 +223,6 @@ function endParty() {
         `;
     });
 
-    // SERİ (TOPLAM GALİBİYET) TABLOSUNU ÇİZ
     seriesScoreList.innerHTML = "";
     players.forEach(p => {
         seriesScoreList.innerHTML += `
@@ -242,13 +237,11 @@ function endParty() {
     }
 }
 
-// 2. PARTİYE GEÇ BUTONU
 nextPartyBtn.addEventListener("click", () => {
     currentParty += 1;
-    startParty(); // Kadro ve galibiyetler korunur, sadece tablo sıfırlanır
+    startParty(); 
 });
 
-// OYUNU TAMAMEN BİTİR BUTONU
 endCompletelyBtn.addEventListener("click", () => {
     if(confirm("Tüm seriyi bitirip ana ekrana dönmek istediğinize emin misiniz?")) {
         location.reload(); 

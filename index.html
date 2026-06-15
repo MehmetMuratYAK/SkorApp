@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkorApp - Çetele</title>
-    <link rel="stylesheet" href="style.css?v=1.0">
+    <link rel="stylesheet" href="style.css?v=1.2">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
@@ -41,7 +41,10 @@
             </div>
 
             <div id="game-screen" style="display: none;">
-                <h2 id="party-title" style="color: #1c7b64; font-size: 16px; margin-bottom: 10px;">1. Parti Oynanıyor</h2>
+                <h2 id="party-title" style="color: #1c7b64; font-size: 16px; margin-bottom: 5px;">1. Parti Oynanıyor</h2>
+                
+                <div id="live-series-score" style="background: #f1f3f5; border: 1px solid #dee2e6; padding: 8px 15px; border-radius: 8px; font-weight: bold; font-size: 14px; color: #32546d; margin-bottom: 15px; display: flex; justify-content: center; gap: 15px;">
+                    </div>
                 
                 <div class="table-responsive">
                     <table id="score-table">
@@ -62,8 +65,7 @@
                 
                 <div id="series-score-board" style="background: #eaf2f8; border: 2px solid #3498db; border-radius: 12px; padding: 15px; margin-bottom: 20px;">
                     <h3 style="color: #2980b9; margin-bottom: 10px; font-size: 16px;">🏆 Toplam Parti Skorları</h3>
-                    <div id="series-score-list" style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                        </div>
+                    <div id="series-score-list" style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;"></div>
                 </div>
 
                 <div id="podium"></div>
@@ -78,6 +80,6 @@
         <div id="status-message">Firebase bağlantısı bekleniyor...</div>
     </div>
 
-    <script type="module" src="app.js?v=3.0"></script>
+    <script type="module" src="app.js?v=1.4"></script>
 </body>
 </html>
