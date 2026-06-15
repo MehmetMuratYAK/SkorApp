@@ -14,8 +14,10 @@ const app = initializeApp(firebaseConfig);
 document.getElementById("status-message").innerText = "✅ Sistem Hazır";
 document.getElementById("status-message").style.color = "#1c7b64";
 
+// YENİ: Parti Numarası ve Galibiyet Hafızası (wins: 0)
 let players = []; 
 let rounds = []; 
+let currentParty = 1;
 
 const homeScreen = document.getElementById("home-screen");
 const setupScreen = document.getElementById("setup-screen");
@@ -28,9 +30,15 @@ const playerNameInput = document.getElementById("player-name");
 const addPlayerBtn = document.getElementById("add-player-btn");
 const playerList = document.getElementById("player-list");
 const startMatchBtn = document.getElementById("start-match-btn");
-const winConditionSelect = document.getElementById("win-condition");
 const gameSettingsArea = document.getElementById("game-settings-area");
-const restartBtn = document.getElementById("restart-btn");
+
+const winConditionSelect = document.getElementById("win-condition");
+const targetScoreInput = document.getElementById("target-score");
+const partyTitle = document.getElementById("party-title");
+const manualEndBtn = document.getElementById("manual-end-btn");
+const nextPartyBtn = document.getElementById("next-party-btn");
+const endCompletelyBtn = document.getElementById("end-completely-btn");
+const seriesScoreList = document.getElementById("series-score-list");
 
 startBtn.addEventListener("click", () => {
     homeScreen.style.display = "none";
@@ -40,7 +48,7 @@ startBtn.addEventListener("click", () => {
 addPlayerBtn.addEventListener("click", () => {
     const name = playerNameInput.value.trim();
     if(name !== "") {
-        players.push({ name: name }); 
+        players.push({ name: name, wins: 0 }); // YENİ: Oyuncular 0 galibiyetle başlar
         playerNameInput.value = ""; 
         updateList(); 
     }
@@ -54,7 +62,6 @@ function updateList() {
         playerList.appendChild(li);
     });
     
-    // En az 2 oyuncu varsa Başla butonunu ve Kazanma Şartı menüsünü göster
     if(players.length >= 2) {
         startMatchBtn.style.display = "block";
         gameSettingsArea.style.display = "block";
@@ -71,10 +78,19 @@ window.removePlayer = function(index) {
 
 startMatchBtn.addEventListener("click", () => {
     setupScreen.style.display = "none";
-    gameScreen.style.display = "block";
-    rounds = [ players.map(() => []) ];
-    renderTable(); 
+    startParty();
 });
+
+// PARTİ BAŞLATMA FONKSİYONU
+function startParty() {
+    gameScreen.style.display = "block";
+    endScreen.style.display = "none";
+    partyTitle.innerText = `${currentParty}. Parti Oynanıyor`;
+    nextPartyBtn.innerText = `${currentParty + 1}. Parti'ye Geç`;
+    
+    rounds = [ players.map(() => []) ];
+    renderTable();
+}
 
 function renderTable() {
     const thead = document.getElementById("score-thead");
@@ -102,7 +118,6 @@ function renderTable() {
             }).join('');
 
             if (html === "") html = `<div class="add-score-hint">Puan Gir</div>`;
-
             td.innerHTML = html;
             tr.appendChild(td);
         });
@@ -117,16 +132,19 @@ function renderTable() {
     });
 
     tfoot.innerHTML = `<tr><th>TOPLAM</th>${totals.map(t => `<th>${t}</th>`).join('')}</tr>`;
+    
+    return totals; // Toplamları hesaplayıp dışarı veriyoruz ki Hakem kontrol etsin
 }
 
 window.addScoreToCell = function(rIndex, pIndex) {
-    let points = prompt(`${rIndex + 1}. El - ${players[pIndex].name} için puan girin.\n(Eksi puan için başına - koyun, örn: -30):`); 
+    let points = prompt(`${rIndex + 1}. El - ${players[pIndex].name} için puan girin:`); 
     
     if (points !== null && points.trim() !== "") {
         let parsed = parseInt(points);
         if (!isNaN(parsed)) {
             rounds[rIndex][pIndex].push(parsed);
-            renderTable(); 
+            let currentTotals = renderTable(); 
+            checkAutoEnd(currentTotals); // YENİ: Hakem kontrolü
         } else {
             alert("Lütfen sadece rakam girin!");
         }
@@ -138,51 +156,101 @@ document.getElementById("new-round-btn").addEventListener("click", () => {
     renderTable();
 });
 
-document.getElementById("end-game-btn").addEventListener("click", () => {
-    if(confirm("Oyunu bitirip sonuçları görmek istediğinize emin misiniz?")) {
-        gameScreen.style.display = "none";
-        endScreen.style.display = "block";
-        
-        let totals = players.map((p, i) => {
-            let totalScore = 0;
-            rounds.forEach(round => {
-                if(round[i]) {
-                    round[i].forEach(score => totalScore += score);
-                }
-            });
-            return { name: p.name, score: totalScore };
-        });
-        
-        // YENİ: Kullanıcının seçtiği kazanma şartını al
-        const winCondition = winConditionSelect.value;
-        
-        // Şarta göre sıralama yap
+// YENİ: OTOMATİK HAKEM (Hedefe ulaşıldı mı?)
+function checkAutoEnd(totals) {
+    let target = parseInt(targetScoreInput.value);
+    if (!isNaN(target)) {
+        let winCondition = winConditionSelect.value;
+        let isGameOver = false;
+
+        // Hedefe ulaşan / hedefi aşan var mı?
         if (winCondition === "high") {
-            totals.sort((a, b) => b.score - a.score); // Büyükten küçüğe
+            isGameOver = totals.some(t => t >= target);
         } else {
-            totals.sort((a, b) => a.score - b.score); // Küçükten büyüğe
+            isGameOver = totals.some(t => t <= target); 
         }
-        
-        podium.innerHTML = "";
-        totals.forEach((player, index) => {
-            let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
-            let medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
-            let colorClass = player.score < 0 ? "negative" : "positive";
-            
-            podium.innerHTML += `
-                <div class="podium-item ${rankClass}">
-                    <span><span class="rank-badge">${medal}</span> ${player.name}</span>
-                    <span class="score-val ${colorClass}">${player.score}</span>
-                </div>
-            `;
-        });
-        
-        if(typeof confetti === "function") {
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+
+        if (isGameOver) {
+            setTimeout(() => {
+                alert(`Hedef puana (${target}) ulaşıldı! ${currentParty}. Parti Sona Erdi.`);
+                endParty();
+            }, 300); // Tablo çizildikten hemen sonra çalışması için çok kısa gecikme
         }
+    }
+}
+
+// MANUEL BİTİR BUTONU
+manualEndBtn.addEventListener("click", () => {
+    if(confirm("Bu partiyi bitirip sonuçları görmek istediğinize emin misiniz?")) {
+        endParty();
     }
 });
 
-restartBtn.addEventListener("click", () => {
-    location.reload(); 
+// PARTİYİ BİTİRME VE HESAPLAMA MANTIĞI
+function endParty() {
+    gameScreen.style.display = "none";
+    endScreen.style.display = "block";
+    
+    let totals = players.map((p, i) => {
+        let totalScore = 0;
+        rounds.forEach(round => {
+            if(round[i]) {
+                round[i].forEach(score => totalScore += score);
+            }
+        });
+        return { originalIndex: i, name: p.name, score: totalScore };
+    });
+    
+    let winCondition = winConditionSelect.value;
+    if (winCondition === "high") {
+        totals.sort((a, b) => b.score - a.score); 
+    } else {
+        totals.sort((a, b) => a.score - b.score); 
+    }
+    
+    // ŞAMPİYONA 1 GALİBİYET YAZ
+    let winnerIndex = totals[0].originalIndex;
+    players[winnerIndex].wins += 1;
+    
+    // PODYUMU ÇİZ
+    podium.innerHTML = "";
+    totals.forEach((player, index) => {
+        let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
+        let medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
+        let colorClass = player.score < 0 ? "negative" : "positive";
+        
+        podium.innerHTML += `
+            <div class="podium-item ${rankClass}">
+                <span><span class="rank-badge">${medal}</span> ${player.name}</span>
+                <span class="score-val ${colorClass}">${player.score}</span>
+            </div>
+        `;
+    });
+
+    // SERİ (TOPLAM GALİBİYET) TABLOSUNU ÇİZ
+    seriesScoreList.innerHTML = "";
+    players.forEach(p => {
+        seriesScoreList.innerHTML += `
+            <div style="background: #ffffff; padding: 5px 15px; border-radius: 8px; font-weight: bold; border: 1px solid #bdc3c7;">
+                ${p.name}: <span style="color: #2980b9; font-size: 18px;">${p.wins}</span>
+            </div>
+        `;
+    });
+    
+    if(typeof confetti === "function") {
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    }
+}
+
+// 2. PARTİYE GEÇ BUTONU
+nextPartyBtn.addEventListener("click", () => {
+    currentParty += 1;
+    startParty(); // Kadro ve galibiyetler korunur, sadece tablo sıfırlanır
+});
+
+// OYUNU TAMAMEN BİTİR BUTONU
+endCompletelyBtn.addEventListener("click", () => {
+    if(confirm("Tüm seriyi bitirip ana ekrana dönmek istediğinize emin misiniz?")) {
+        location.reload(); 
+    }
 });

@@ -25,18 +25,24 @@
                 </div>
                 <ul id="player-list"></ul>
                 
-                <div id="game-settings-area" style="margin-bottom: 20px; text-align: left; display: none;">
-                    <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 8px;">Kazanma Şartı Nedir?</label>
-                    <select id="win-condition" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; background: #fff; color: #333; outline: none;">
-                        <option value="high">En Yüksek Puan Kazanır </option>
-                        <option value="low">En Düşük Puan Kazanır </option>
+                <div id="game-settings-area" style="margin-bottom: 20px; text-align: left; display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
+                    <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Kazanma Şartı Nedir?</label>
+                    <select id="win-condition" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
+                        <option value="high">En Yüksek Puan Kazanır</option>
+                        <option value="low">En Düşük Puan Kazanır</option>
                     </select>
+
+                    <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Hedef Puan (İsteğe Bağlı)</label>
+                    <input type="number" id="target-score" placeholder="Örn: 101 (Sonsuz için boş bırakın)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
+                    <small style="color: #7f8c8d; display: block; margin-top: 5px;">Biri bu puana ulaşınca parti otomatik biter.</small>
                 </div>
 
                 <button id="start-match-btn" class="btn-primary" style="display: none;">Masa Hazır, Başla!</button>
             </div>
 
             <div id="game-screen" style="display: none;">
+                <h2 id="party-title" style="color: #1c7b64; font-size: 16px; margin-bottom: 10px;">1. Parti Oynanıyor</h2>
+                
                 <div class="table-responsive">
                     <table id="score-table">
                         <thead id="score-thead"></thead>
@@ -47,20 +53,31 @@
                 
                 <div class="game-controls">
                     <button id="new-round-btn" class="btn-secondary" style="width: 100%; padding: 12px; margin-bottom: 10px;">➕ Yeni El (Tur) Ekle</button>
-                    <button id="end-game-btn" class="btn-primary" style="background-color: #e74c3c;">Oyunu Bitir</button>
+                    <button id="manual-end-btn" class="btn-primary" style="background-color: #e74c3c;">Partiyi Bitir</button>
                 </div>
             </div>
 
             <div id="end-screen" style="display: none;">
-                <h2>🎉 Oyun Bitti! 🎉</h2>
+                <h2>🎉 Parti Bitti! 🎉</h2>
+                
+                <div id="series-score-board" style="background: #eaf2f8; border: 2px solid #3498db; border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+                    <h3 style="color: #2980b9; margin-bottom: 10px; font-size: 16px;">🏆 Toplam Parti Skorları</h3>
+                    <div id="series-score-list" style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                        </div>
+                </div>
+
                 <div id="podium"></div>
-                <button id="restart-btn" class="btn-primary" style="margin-top: 25px;">Yeni Oyun Başlat</button>
+                
+                <div style="display: flex; gap: 10px; margin-top: 25px;">
+                    <button id="end-completely-btn" class="btn-secondary" style="flex: 1; border-color: #e74c3c; color: #e74c3c;">Oyunu Bitir</button>
+                    <button id="next-party-btn" class="btn-primary" style="flex: 1;">2. Parti</button>
+                </div>
             </div>
         </div>
         
         <div id="status-message">Firebase bağlantısı bekleniyor...</div>
     </div>
 
-    <script type="module" src="app.js?v=2.0"></script>
+    <script type="module" src="app.js?v=3.0"></script>
 </body>
 </html>
