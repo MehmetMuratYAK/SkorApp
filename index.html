@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkorApp - Çetele</title>
     <link rel="stylesheet" href="style.css">
+    <!-- YENİ: Konfeti Animasyonu İçin Kütüphane -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -37,8 +39,17 @@
                 
                 <div class="game-controls">
                     <button id="new-round-btn" class="btn-secondary" style="width: 100%; padding: 12px; margin-bottom: 10px;">➕ Yeni El (Tur) Ekle</button>
-                    <button id="end-game-btn" class="btn-primary" style="background-color: #ff4c4c;">Oyunu Bitir</button>
+                    <button id="end-game-btn" class="btn-primary" style="background-color: #e74c3c;">Oyunu Bitir</button>
                 </div>
+            </div>
+
+            <!-- YENİ: OYUN BİTİŞ EKRANI -->
+            <div id="end-screen" style="display: none;">
+                <h2>🎉 Oyun Bitti! 🎉</h2>
+                <div id="podium">
+                    <!-- Sıralama buraya otomatik gelecek -->
+                </div>
+                <button id="restart-btn" class="btn-primary" style="margin-top: 25px;">Yeni Oyun Başlat</button>
             </div>
         </div>
         

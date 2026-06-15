@@ -142,6 +142,53 @@ document.getElementById("new-round-btn").addEventListener("click", () => {
     renderTable();
 });
 
+// EKRAN SEÇİMLERİNE BUNLARI EKLE (En üstteki const tanımlarının yanına/altına)
+const endScreen = document.getElementById("end-screen");
+const podium = document.getElementById("podium");
+const restartBtn = document.getElementById("restart-btn");
+
+// OYUNU BİTİR BUTONUNUN YENİ HALİ (En alttaki kodu bununla değiştir)
 document.getElementById("end-game-btn").addEventListener("click", () => {
-    alert("Oyun bitti! Sonuç ekranı yapım aşamasında...");
+    if(confirm("Oyunu bitirip sonuçları görmek istediğinize emin misiniz?")) {
+        gameScreen.style.display = "none";
+        endScreen.style.display = "block";
+        
+        // 1. Herkesin toplam skorunu hesapla
+        let totals = players.map((p, i) => {
+            let totalScore = 0;
+            rounds.forEach(round => {
+                if(round[i]) {
+                    round[i].forEach(score => totalScore += score);
+                }
+            });
+            return { name: p.name, score: totalScore };
+        });
+        
+        // 2. Büyükten küçüğe sırala (En yüksek puan kazansın)
+        totals.sort((a, b) => b.score - a.score);
+        
+        // 3. Podyumu Çiz
+        podium.innerHTML = "";
+        totals.forEach((player, index) => {
+            let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
+            let medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
+            
+            podium.innerHTML += `
+                <div class="podium-item ${rankClass}">
+                    <span><span class="rank-badge">${medal}</span> ${player.name}</span>
+                    <span class="score-val positive">${player.score}</span>
+                </div>
+            `;
+        });
+        
+        // 4. Konfetileri Patlat! 🎉
+        if(typeof confetti === "function") {
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        }
+    }
+});
+
+// YENİ OYUN BAŞLAT (Sayfayı sıfırlar)
+restartBtn.addEventListener("click", () => {
+    location.reload(); 
 });
