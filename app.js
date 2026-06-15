@@ -16,6 +16,7 @@ document.getElementById("status-message").style.color = "#1c7b64";
 
 let players = []; 
 let rounds = []; 
+let pastParties = []; // YENİ: Geçmiş partilerin toplam skorlarını matris olarak tutar
 let currentParty = 1;
 
 const homeScreen = document.getElementById("home-screen");
@@ -34,7 +35,7 @@ const gameSettingsArea = document.getElementById("game-settings-area");
 const winConditionSelect = document.getElementById("win-condition");
 const targetScoreInput = document.getElementById("target-score");
 const partyTitle = document.getElementById("party-title");
-const liveSeriesScore = document.getElementById("live-series-score"); // YENİ ELEMAN
+const liveSeriesScore = document.getElementById("live-series-score");
 const manualEndBtn = document.getElementById("manual-end-btn");
 const nextPartyBtn = document.getElementById("next-party-btn");
 const endCompletelyBtn = document.getElementById("end-completely-btn");
@@ -87,8 +88,41 @@ function startParty() {
     partyTitle.innerText = `${currentParty}. Parti Oynanıyor`;
     nextPartyBtn.innerText = `${currentParty + 1}. Parti'ye Geç`;
     
-    // YENİ: Oyun oynanırken üstteki gri kutuda genel galibiyet serisini gösteriyoruz
-    liveSeriesScore.innerHTML = players.map(p => `<div>${p.name}: <span style="color:#1c7b64; font-size:16px;">${p.wins}</span></div>`).join('<div style="color:#ccc">|</div>');
+    // ÜST PANEL: GENEL SKOR VE GEÇMİŞ PARTİLERİN RENKLİ GÖSTERİMİ
+    let winCondition = winConditionSelect.value;
+    let panelHTML = `<div style="font-weight: bold; text-align: center; margin-bottom: 8px; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; color:#2c4d61;">🏆 GENEL SERİ: ${players.map(p => `${p.name}: ${p.wins}`).join(' - ')}</div>`;
+    
+    if (pastParties.length > 0) {
+        panelHTML += `<div style="font-size: 13px; display: flex; flex-direction: column; gap: 4px;">`;
+        pastParties.forEach((partyTotals, index) => {
+            // O partideki en yüksek ve en düşük skorları buluyoruz
+            let maxScore = Math.max(...partyTotals);
+            let minScore = Math.min(...partyTotals);
+            
+            // Kazanma kuralına göre galip/mağlup skorunu netleştiriyoruz
+            let winnerValue = winCondition === "high" ? maxScore : minScore;
+            let loserValue = winCondition === "high" ? minScore : maxScore;
+            
+            let partyRow = `<strong>${index + 1}. Parti:</strong> `;
+            let playerStrings = players.map((p, pIndex) => {
+                let score = partyTotals[pIndex];
+                let colorStyle = "color: #333;"; // Varsayılan nötr renk
+                
+                if (score === winnerValue) colorStyle = "color: #1c7b64; font-weight: bold;"; // KAZANAN YEŞİL
+                else if (score === loserValue) colorStyle = "color: #e74c3c; font-weight: bold;"; // KAYBEDEN KIRMIZI
+                
+                return `${p.name}: <span style="${colorStyle}">${score}</span>`;
+            });
+            
+            partyRow += playerStrings.join(', ');
+            panelHTML += `<div>${partyRow}</div>`;
+        });
+        panelHTML += `</div>`;
+    } else {
+        panelHTML += `<div style="text-align: center; color: #7f8c8d; font-size: 12px; font-style: italic;">İlk parti oynanıyor, henüz geçmiş kütüğü yok.</div>`;
+    }
+    
+    liveSeriesScore.innerHTML = panelHTML;
     
     rounds = [ players.map(() => []) ];
     renderTable();
@@ -189,14 +223,20 @@ function endParty() {
     gameScreen.style.display = "none";
     endScreen.style.display = "block";
     
-    let totals = players.map((p, i) => {
+    // Mevcut partinin toplam skorlarını orijinal sırayla hesaplayıp geçmiş kütüğüne (pastParties) ekliyoruz
+    let partyTotalsOrdered = players.map((p, i) => {
         let totalScore = 0;
         rounds.forEach(round => {
             if(round[i]) {
                 round[i].forEach(score => totalScore += score);
             }
         });
-        return { originalIndex: i, name: p.name, score: totalScore };
+        return totalScore;
+    });
+    pastParties.push(partyTotalsOrdered); // Hafızaya alındı!
+
+    let totals = players.map((p, i) => {
+        return { originalIndex: i, name: p.name, score: partyTotalsOrdered[i] };
     });
     
     let winCondition = winConditionSelect.value;
