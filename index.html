@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkorApp - Çetele</title>
     <link rel="stylesheet" href="style.css">
-    <!-- YENİ: Konfeti Animasyonu İçin Kütüphane -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
@@ -25,6 +24,15 @@
                     <button id="add-player-btn" class="btn-secondary">Ekle</button>
                 </div>
                 <ul id="player-list"></ul>
+                
+                <div id="game-settings-area" style="margin-bottom: 20px; text-align: left; display: none;">
+                    <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 8px;">Kazanma Şartı Nedir?</label>
+                    <select id="win-condition" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; background: #fff; color: #333; outline: none;">
+                        <option value="high">En Yüksek Puan Kazanır (101, Okey vb.)</option>
+                        <option value="low">En Düşük Puan Kazanır (Batak, Uno vb.)</option>
+                    </select>
+                </div>
+
                 <button id="start-match-btn" class="btn-primary" style="display: none;">Masa Hazır, Başla!</button>
             </div>
 
@@ -43,12 +51,9 @@
                 </div>
             </div>
 
-            <!-- YENİ: OYUN BİTİŞ EKRANI -->
             <div id="end-screen" style="display: none;">
                 <h2>🎉 Oyun Bitti! 🎉</h2>
-                <div id="podium">
-                    <!-- Sıralama buraya otomatik gelecek -->
-                </div>
+                <div id="podium"></div>
                 <button id="restart-btn" class="btn-primary" style="margin-top: 25px;">Yeni Oyun Başlat</button>
             </div>
         </div>
