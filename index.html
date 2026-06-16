@@ -3,29 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkorApp - Çetele</title>
-    <link rel="stylesheet" href="style.css?v=1.4">
+    <title>SkorApp - Pro</title>
+    <link rel="stylesheet" href="style.css?v=3.2">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>🏆 SkorApp</h1>
-        <p>Kağıt ve Kutu Oyunları Çetelesi</p>
+        <h1>🏆 SkorApp Pro</h1>
+        <p id="app-sub-title">Gelişmiş Ekip ve Turnuva Sistemi</p>
         
         <div id="app-content">
-            <div id="home-screen">
-                <button id="start-btn" class="btn-primary">Hızlı Oyun Başlat</button>
+            <div id="auth-screen">
+                <h2 id="auth-title">Giriş Yap</h2>
+                <div class="form-group">
+                    <input type="text" id="auth-username" placeholder="Kullanıcı Adı (Sadece Kayıtta)" style="display: none;">
+                    <input type="email" id="auth-email" placeholder="E-posta Adresi">
+                    <input type="password" id="auth-password" placeholder="Şifre">
+                    
+                    <div id="register-extra-fields" style="display: none; text-align: left; margin-top: 10px;">
+                        <label style="font-weight: bold; font-size: 13px; color: #2c4d61;">Profil Avatarı (Emoji):</label>
+                        <input type="text" id="auth-avatar" placeholder="Örn: 😎, 👑, 🎲" value="👤">
+                        
+                        <label style="font-weight: bold; font-size: 13px; color: #2c4d61; display: block; margin-top: 10px;">En Sevdiğin Oyunlar:</label>
+                        <input type="text" id="auth-fav-games" placeholder="Örn: 101, Batak, Okey">
+                    </div>
+                </div>
+                
+                <button id="auth-primary-btn" class="btn-primary">Giriş Yap</button>
+                
+                <button id="google-auth-btn" class="btn-secondary" style="width: 100%; margin-top: 10px; background: #ffffff; color: #4285F4; border-color: #4285F4; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <span style="font-weight: bold; font-size: 18px;">G</span> Google ile Giriş Yap
+                </button>
+                
+                <button id="forgot-password-btn" class="btn-secondary" style="margin-top: 10px; font-size: 12px; padding: 5px; border: none; color: #7f8c8d;">Şifremi Unuttum</button>
+                
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #dee2e6;">
+                
+                <button id="toggle-auth-btn" style="background: none; border: none; color: #1c7b64; font-weight: bold; cursor: pointer;">Hesabın yok mu? Kayıt Ol</button>
+                <button id="quick-start-btn" class="btn-secondary" style="width: 100%; margin-top: 10px; border-color: #7f8c8d; color: #7f8c8d;">Giriş Yapmadan Hızlı Başla</button>
+            </div>
+
+            <div id="dashboard-screen" style="display: none;">
+                <div id="user-profile-bar" style="display: flex; align-items: center; gap: 10px; background: #f1f3f5; padding: 10px; border-radius: 12px; margin-bottom: 20px; text-align: left;">
+                    <span id="user-avatar" style="font-size: 30px;">👤</span>
+                    <div>
+                        <div id="user-welcome" style="font-weight: bold; color: #2c4d61;">Merhaba!</div>
+                        <div id="user-badge" style="font-size: 11px; background: #7f8c8d; color: white; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 3px;">Standart Üye</div>
+                    </div>
+                    <button id="logout-btn" style="margin-left: auto; background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;">Çıkış</button>
+                </div>
+
+                <h2>Kayıtlı Olduğunuz Ekipler</h2>
+                <ul id="group-list" style="margin-bottom: 15px;"></ul>
+
+                <div id="create-group-area" style="background: #fffdf5; border: 1px solid #f1c40f; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: left;">
+                    <h3 style="color: #b7950b; font-size: 14px; margin-bottom: 5px;">👑 Premium Grup Kur</h3>
+                    <div class="input-group" style="margin-bottom: 5px;">
+                        <input type="text" id="new-group-name" placeholder="Ekip Adı (Örn: Cuma Batakçıları)">
+                        <button id="create-group-btn" class="btn-secondary" style="border-color: #f1c40f; color: #b7950b;">Kur</button>
+                    </div>
+                    <small id="group-notice" style="color: #7f8c8d; font-size: 11px;">Grup oluşturmak Admin yetkisi gerektirir.</small>
+                </div>
+
+                <button id="dashboard-quick-btn" class="btn-primary">Kayıtsız Hızlı Maç Başlat</button>
+            </div>
+
+            <div id="group-detail-screen" style="display: none;">
+                <h2 id="detail-group-name" style="color: #1c7b64; font-size: 24px; margin-bottom: 15px;">Grup Detayı</h2>
+                
+                <div style="text-align: left; margin-bottom: 20px;">
+                    <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">📊 Genel Puan Tablosu</h3>
+                    <div id="detail-leaderboard" style="background: #ffffff; border: 1px solid #dee2e6; border-radius: 12px; padding: 10px;">
+                        </div>
+                </div>
+
+                <div style="text-align: left; margin-bottom: 25px;">
+                    <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">⏳ Son Oynanan 5 Oyun</h3>
+                    <div id="detail-recent-games" style="display: flex; flex-direction: column; gap: 8px;">
+                        </div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button id="detail-back-btn" class="btn-secondary" style="flex: 1;">Gruplara Dön</button>
+                    <button id="detail-start-match-btn" class="btn-primary" style="flex: 2;">Yeni Maç Başlat</button>
+                </div>
             </div>
 
             <div id="setup-screen" style="display: none;">
-                <h2>Oyuncuları Ekle</h2>
-                <div class="input-group">
-                    <input type="text" id="player-name" placeholder="Oyuncu Adı (Örn: Ahmet)">
+                <h2 id="setup-title">Oyuncuları Seç</h2>
+                <div id="setup-add-area" class="input-group">
+                    <input type="text" id="player-name" placeholder="Oyuncu Adı">
                     <button id="add-player-btn" class="btn-secondary">Ekle</button>
                 </div>
                 <ul id="player-list"></ul>
                 
                 <div id="game-settings-area" style="margin-bottom: 20px; text-align: left; display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
+                    <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Hangi Oyun Oynanacak?</label>
+                    <select id="game-type" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
+                        <option value="pisti">Pişti</option>
+                        <option value="okey">Okey (Düz)</option>
+                        <option value="101">101 Okey</option>
+                        <option value="batak">Batak</option>
+                        <option value="king">King</option>
+                    </select>
+
                     <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Kazanma Şartı Nedir?</label>
                     <select id="win-condition" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
                         <option value="high">En Yüksek Puan Kazanır</option>
@@ -36,19 +117,20 @@
                     <input type="number" id="target-score" placeholder="Örn: 101" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
 
                     <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Oyun Sayma Mantığı</label>
-                    <select id="stat-type" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; background: white;">
+                    <select id="stat-type" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
                         <option value="per-party">Her Parti = 1 Oyun Sayılsın</option>
                         <option value="per-series">Tüm Seri = 1 Oyun Sayılsın</option>
                     </select>
-                    <small style="color: #7f8c8d; display: block; margin-top: 5px;">Bu ayar oyuncu istatistik raporu için kullanılacaktır.</small>
                 </div>
 
-                <button id="start-match-btn" class="btn-primary" style="display: none;">Masa Hazır, Başla!</button>
+                <div style="display: flex; gap: 10px;">
+                    <button id="setup-back-btn" class="btn-secondary" style="flex: 1; display: none;">Geri Dön</button>
+                    <button id="start-match-btn" class="btn-primary" style="display: none; flex: 2;">Başla!</button>
+                </div>
             </div>
 
             <div id="game-screen" style="display: none;">
                 <h2 id="party-title" style="color: #1c7b64; font-size: 16px; margin-bottom: 5px;">1. Parti Oynanıyor</h2>
-                
                 <div id="live-series-score" style="background: #f1f3f5; border: 1px solid #dee2e6; padding: 12px; border-radius: 8px; font-size: 14px; color: #32546d; margin-bottom: 15px; text-align: left;"></div>
                 
                 <div class="table-responsive">
@@ -74,22 +156,21 @@
                 <div id="podium"></div>
                 <div style="display: flex; gap: 10px; margin-top: 25px;">
                     <button id="end-completely-btn" class="btn-secondary" style="flex: 1; border-color: #e74c3c; color: #e74c3c;">Oyunu Bitir</button>
-                    <button id="next-party-btn" class="btn-primary" style="flex: 1;">2. Parti</button>
+                    <button id="next-party-btn" class="btn-primary" style="flex: 1;">Next Parti</button>
                 </div>
             </div>
 
             <div id="summary-screen" style="display: none;">
-                <h2>📊 Turnuva Genel Özeti 📊</h2>
+                <h2>📊 Turnuva İstatistik Özeti 📊</h2>
                 <div id="game-count-info" style="font-weight: bold; color: #2c4d61; margin-bottom: 15px; font-size: 15px; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #e1e8ed;"></div>
-                <div id="summary-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 25px;">
-                    </div>
-                <button id="final-restart-btn" class="btn-primary">Yeni Turnuva Başlat</button>
+                <div id="summary-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 25px;"></div>
+                <button id="final-restart-btn" class="btn-primary">Ana Panele Dön</button>
             </div>
         </div>
         
         <div id="status-message">Firebase bağlantısı bekleniyor...</div>
     </div>
 
-    <script type="module" src="app.js?v=1.6"></script>
+    <script type="module" src="app.js?v=3.2"></script>
 </body>
 </html>
