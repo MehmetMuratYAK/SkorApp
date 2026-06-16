@@ -1,10 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // FIREBASE YAPILANDIRMASI
 const firebaseConfig = {
-  apiKey: "AIzaSyA963gL6nAee0JZ1lW5Utbfz4UL9n8VFdg",
+  apiKey: "AIzaSyA963gL6nAee0JZ1lW5Utbfz4UL9n8VFdg", 
   authDomain: "skorapp-cc771.firebaseapp.com",
   projectId: "skorapp-cc771",
   storageBucket: "skorapp-cc771.firebasestorage.app",
@@ -16,6 +16,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
 // UYGULAMA DURUMU (STATE)
 let currentUserData = null; 
@@ -40,6 +41,7 @@ const authPasswordInput = document.getElementById("auth-password");
 const authAvatarInput = document.getElementById("auth-avatar");
 const authFavGamesInput = document.getElementById("auth-fav-games");
 const authPrimaryBtn = document.getElementById("auth-primary-btn");
+const googleAuthBtn = document.getElementById("google-auth-btn");
 const forgotPasswordBtn = document.getElementById("forgot-password-btn");
 const toggleAuthBtn = document.getElementById("toggle-auth-btn");
 const quickStartBtn = document.getElementById("quick-start-btn");
@@ -115,6 +117,7 @@ toggleAuthBtn.addEventListener("click", () => {
     }
 });
 
+// Klasik E-posta ile Giriş / Kayıt
 authPrimaryBtn.addEventListener("click", async () => {
     const email = authEmailInput.value.trim();
     const password = authPasswordInput.value.trim();
@@ -126,11 +129,9 @@ authPrimaryBtn.addEventListener("click", async () => {
     
     try {
         if (isLoginMode) {
-            // MANUEL GİRİŞ YAPMA
             statusMsg.innerText = "⏳ Oturum açılıyor...";
             await signInWithEmailAndPassword(auth, email, password);
         } else {
-            // MANUEL KENDİ KENDİNE KAYIT OLMA
             const username = authUsernameInput.value.trim();
             if (!username) {
                 alert("Kullanıcı adı şarttır!");
@@ -138,8 +139,6 @@ authPrimaryBtn.addEventListener("click", async () => {
             }
             statusMsg.innerText = "⏳ Hesap oluşturuluyor...";
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            
-            // Firestore profil kaydını bağla
             await setDoc(doc(db, "users", userCredential.user.uid), {
                 username: username,
                 email: email,
@@ -147,11 +146,35 @@ authPrimaryBtn.addEventListener("click", async () => {
                 favGames: authFavGamesInput.value.trim() || "",
                 isAdmin: false
             });
-            alert("Hesabınız başarıyla oluşturuldu ve giriş yapıldı!");
+            alert("Hesabınız oluşturuldu!");
         }
     } catch (error) {
         alert("Hata: " + error.message);
         statusMsg.innerText = "❌ İşlem başarısız.";
+    }
+});
+
+// Google ile Giriş / Kayıt (Gmail Entegrasyonu)
+googleAuthBtn.addEventListener("click", async () => {
+    statusMsg.innerText = "⏳ Google penceresi bekleniyor...";
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const userDocRef = doc(db, "users", result.user.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        // Eğer kullanıcı veritabanında ilk kez görünüyorsa otomatik profil aç
+        if (!userDoc.exists()) {
+            await setDoc(userDocRef, {
+                username: result.user.displayName || "Google Kullanıcısı",
+                email: result.user.email,
+                avatar: "😎",
+                favGames: "",
+                isAdmin: false
+            });
+        }
+    } catch (error) {
+        alert("Google Giriş Hatası: " + error.message);
+        statusMsg.innerText = "❌ Google girişi başarısız.";
     }
 });
 
