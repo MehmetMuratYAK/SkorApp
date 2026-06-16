@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // FIREBASE YAPILANDIRMASI
 const firebaseConfig = {
@@ -16,7 +16,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
 
 // UYGULAMA DURUMU (STATE)
 let currentUserData = null; 
@@ -41,7 +40,6 @@ const authPasswordInput = document.getElementById("auth-password");
 const authAvatarInput = document.getElementById("auth-avatar");
 const authFavGamesInput = document.getElementById("auth-fav-games");
 const authPrimaryBtn = document.getElementById("auth-primary-btn");
-const googleAuthBtn = document.getElementById("google-auth-btn");
 const forgotPasswordBtn = document.getElementById("forgot-password-btn");
 const toggleAuthBtn = document.getElementById("toggle-auth-btn");
 const quickStartBtn = document.getElementById("quick-start-btn");
@@ -95,7 +93,6 @@ const finalRestartBtn = document.getElementById("final-restart-btn");
 
 const statusMsg = document.getElementById("status-message");
 
-// BAĞLANTI KONTROLÜ
 statusMsg.innerText = "✅ Sistem Hazır";
 statusMsg.style.color = "#1c7b64";
 
@@ -129,14 +126,20 @@ authPrimaryBtn.addEventListener("click", async () => {
     
     try {
         if (isLoginMode) {
+            // MANUEL GİRİŞ YAPMA
+            statusMsg.innerText = "⏳ Oturum açılıyor...";
             await signInWithEmailAndPassword(auth, email, password);
         } else {
+            // MANUEL KENDİ KENDİNE KAYIT OLMA
             const username = authUsernameInput.value.trim();
             if (!username) {
                 alert("Kullanıcı adı şarttır!");
                 return;
             }
+            statusMsg.innerText = "⏳ Hesap oluşturuluyor...";
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            
+            // Firestore profil kaydını bağla
             await setDoc(doc(db, "users", userCredential.user.uid), {
                 username: username,
                 email: email,
@@ -144,29 +147,11 @@ authPrimaryBtn.addEventListener("click", async () => {
                 favGames: authFavGamesInput.value.trim() || "",
                 isAdmin: false
             });
+            alert("Hesabınız başarıyla oluşturuldu ve giriş yapıldı!");
         }
     } catch (error) {
         alert("Hata: " + error.message);
-    }
-});
-
-googleAuthBtn.addEventListener("click", async () => {
-    try {
-        const result = await signInWithPopup(auth, googleProvider);
-        const userDocRef = doc(db, "users", result.user.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (!userDoc.exists()) {
-            await setDoc(userDocRef, {
-                username: result.user.displayName || "Google Kullanıcısı",
-                email: result.user.email,
-                avatar: "😎",
-                favGames: "",
-                isAdmin: false
-            });
-        }
-    } catch (error) {
-        alert("Google Giriş Hatası: " + error.message);
+        statusMsg.innerText = "❌ İşlem başarısız.";
     }
 });
 
@@ -221,6 +206,7 @@ onAuthStateChanged(auth, async (user) => {
                 userBadge.style.background = "#7f8c8d";
             }
         }
+        statusMsg.innerText = "✅ Oturum Açık";
         await fetchGroups(); 
     } else {
         dashboardScreen.style.display = "none";
@@ -230,6 +216,7 @@ onAuthStateChanged(auth, async (user) => {
         endScreen.style.display = "none";
         summaryScreen.style.display = "none";
         authScreen.style.display = "block";
+        statusMsg.innerText = "🔒 Oturum Açık Değil";
     }
 });
 
@@ -294,7 +281,7 @@ async function fetchGroups() {
 async function showGroupDetails(groupId) {
     dashboardScreen.style.display = "none";
     groupDetailScreen.style.display = "block";
-    statusMsg.innerText = "⏳ Grup kütüğü buluttan indiriliyor...";
+    statusMsg.innerText = "⏳ Grup kütüğü indiriliyor...";
 
     const groupDoc = await getDoc(doc(db, "groups", groupId));
     if (groupDoc.exists()) {
@@ -335,7 +322,7 @@ async function showGroupDetails(groupId) {
                     </div>`;
             });
         }
-        statusMsg.innerText = "✅ Grup verileri yüklendi.";
+        statusMsg.innerText = "✅ Grup verileri senkronize.";
     }
 }
 

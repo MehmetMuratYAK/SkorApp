@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkorApp - Pro</title>
-    <link rel="stylesheet" href="style.css?v=3.2">
+    <link rel="stylesheet" href="style.css?v=4.5">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
@@ -16,7 +16,7 @@
             <div id="auth-screen">
                 <h2 id="auth-title">Giriş Yap</h2>
                 <div class="form-group">
-                    <input type="text" id="auth-username" placeholder="Kullanıcı Adı (Sadece Kayıtta)" style="display: none;">
+                    <input type="text" id="auth-username" placeholder="Kullanıcı Adı" style="display: none;">
                     <input type="email" id="auth-email" placeholder="E-posta Adresi">
                     <input type="password" id="auth-password" placeholder="Şifre">
                     
@@ -30,11 +30,6 @@
                 </div>
                 
                 <button id="auth-primary-btn" class="btn-primary">Giriş Yap</button>
-                
-                <button id="google-auth-btn" class="btn-secondary" style="width: 100%; margin-top: 10px; background: #ffffff; color: #4285F4; border-color: #4285F4; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                    <span style="font-weight: bold; font-size: 18px;">G</span> Google ile Giriş Yap
-                </button>
-                
                 <button id="forgot-password-btn" class="btn-secondary" style="margin-top: 10px; font-size: 12px; padding: 5px; border: none; color: #7f8c8d;">Şifremi Unuttum</button>
                 
                 <hr style="margin: 15px 0; border: 0; border-top: 1px solid #dee2e6;">
@@ -73,14 +68,12 @@
                 
                 <div style="text-align: left; margin-bottom: 20px;">
                     <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">📊 Genel Puan Tablosu</h3>
-                    <div id="detail-leaderboard" style="background: #ffffff; border: 1px solid #dee2e6; border-radius: 12px; padding: 10px;">
-                        </div>
+                    <div id="detail-leaderboard" style="background: #ffffff; border: 1px solid #dee2e6; border-radius: 12px; padding: 10px;"></div>
                 </div>
 
                 <div style="text-align: left; margin-bottom: 25px;">
                     <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">⏳ Son Oynanan 5 Oyun</h3>
-                    <div id="detail-recent-games" style="display: flex; flex-direction: column; gap: 8px;">
-                        </div>
+                    <div id="detail-recent-games" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
 
                 <div style="display: flex; gap: 10px;">
@@ -171,6 +164,6 @@
         <div id="status-message">Firebase bağlantısı bekleniyor...</div>
     </div>
 
-    <script type="module" src="app.js?v=3.2"></script>
+    <script type="module" src="app.js?v=4.5"></script>
 </body>
 </html>
