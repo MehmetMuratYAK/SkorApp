@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkorApp - Pro</title>
-    <link rel="stylesheet" href="style.css?v=5.0">
+    <link rel="stylesheet" href="style.css?v=5.2">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
@@ -32,7 +32,6 @@
                 
                 <button id="auth-primary-btn" class="btn-primary">Giriş Yap</button>
                 
-                <!-- Google ile Giriş Yap Butonu -->
                 <button id="google-auth-btn" class="btn-secondary" style="width: 100%; margin-top: 10px; background: #ffffff; color: #4285F4; border-color: #4285F4; display: flex; align-items: center; justify-content: center; gap: 10px;">
                     <span style="font-weight: bold; font-size: 18px;">G</span> Google ile Giriş Yap
                 </button>
@@ -68,23 +67,31 @@
                     <small id="group-notice" style="color: #7f8c8d; font-size: 11px;">Grup oluşturmak Admin yetkisi gerektirir.</small>
                 </div>
 
-                <button id="dashboard-quick-btn" class="btn-primary">Kayıtsız Hızlı Maç Başlat</button>
+                <button id="dashboard-quick-btn" class="btn-primary" style="margin-bottom: 25px;">Kayıtsız Hızlı Maç Başlat</button>
+
+                <!-- DOĞRU YER: Hesap Ayarları artık sadece giriş yapınca Dashboard içinde en altta şıkça gözükecek -->
+                <div id="profile-settings" style="margin-top: 30px; border-top: 1px solid #dee2e6; padding-top: 20px; text-align: left;">
+                    <h3 style="color: #2c4d61; font-size: 16px; margin-bottom: 12px;">⚙️ Hesap Ayarları</h3>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <input type="text" id="edit-username" placeholder="Yeni Kullanıcı Adı" style="width: 100%; margin-bottom: 8px;">
+                        <input type="text" id="edit-avatar" placeholder="Yeni Avatar (Emoji)" style="width: 100%; margin-bottom: 8px;">
+                    </div>
+                    <button id="update-profile-btn" class="btn-secondary" style="width: 100%; margin-bottom: 10px;">Profili Güncelle</button>
+                    <button id="delete-account-btn" style="width: 100%; background: #ffeded; color: #e74c3c; border: 1px solid #e74c3c; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px;">❌ Hesabımı Kalıcı Olarak Sil</button>
+                </div>
             </div>
 
             <!-- 3. GRUP DETAY EKRANI (LOBİ) -->
             <div id="group-detail-screen" style="display: none;">
                 <h2 id="detail-group-name" style="color: #1c7b64; font-size: 24px; margin-bottom: 15px;">Grup Detayı</h2>
-                
                 <div style="text-align: left; margin-bottom: 20px;">
                     <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">📊 Genel Puan Tablosu</h3>
                     <div id="detail-leaderboard" style="background: #ffffff; border: 1px solid #dee2e6; border-radius: 12px; padding: 10px;"></div>
                 </div>
-
                 <div style="text-align: left; margin-bottom: 25px;">
                     <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">⏳ Son Oynanan 5 Oyun</h3>
                     <div id="detail-recent-games" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
-
                 <div style="display: flex; gap: 10px;">
                     <button id="detail-back-btn" class="btn-secondary" style="flex: 1;">Gruplara Dön</button>
                     <button id="detail-start-match-btn" class="btn-primary" style="flex: 2;">Yeni Maç Başlat</button>
@@ -99,7 +106,6 @@
                     <button id="add-player-btn" class="btn-secondary">Ekle</button>
                 </div>
                 <ul id="player-list"></ul>
-                
                 <div id="game-settings-area" style="margin-bottom: 20px; text-align: left; display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
                     <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Hangi Oyun Oynanacak?</label>
                     <select id="game-type" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
@@ -109,23 +115,19 @@
                         <option value="batak">Batak</option>
                         <option value="king">King</option>
                     </select>
-
                     <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Kazanma Şartı Nedir?</label>
                     <select id="win-condition" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
                         <option value="high">En Yüksek Puan Kazanır</option>
                         <option value="low">En Düşük Puan Kazanır</option>
                     </select>
-
                     <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Hedef Puan (İsteğe Bağlı)</label>
                     <input type="number" id="target-score" placeholder="Örn: 101" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
-
                     <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Oyun Sayma Mantığı</label>
                     <select id="stat-type" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
                         <option value="per-party">Her Parti = 1 Oyun Sayılsın</option>
                         <option value="per-series">Tüm Seri = 1 Oyun Sayılsın</option>
                     </select>
                 </div>
-
                 <div style="display: flex; gap: 10px;">
                     <button id="setup-back-btn" class="btn-secondary" style="flex: 1; display: none;">Geri Dön</button>
                     <button id="start-match-btn" class="btn-primary" style="display: none; flex: 2;">Başla!</button>
@@ -136,7 +138,6 @@
             <div id="game-screen" style="display: none;">
                 <h2 id="party-title" style="color: #1c7b64; font-size: 16px; margin-bottom: 5px;">1. Parti Oynanıyor</h2>
                 <div id="live-series-score" style="background: #f1f3f5; border: 1px solid #dee2e6; padding: 12px; border-radius: 8px; font-size: 14px; color: #32546d; margin-bottom: 15px; text-align: left;"></div>
-                
                 <div class="table-responsive">
                     <table id="score-table">
                         <thead id="score-thead"></thead>
@@ -144,7 +145,6 @@
                         <tfoot id="score-tfoot"></tfoot>
                     </table>
                 </div>
-                
                 <div class="game-controls">
                     <button id="new-round-btn" class="btn-secondary" style="width: 100%; padding: 12px; margin-bottom: 10px;">➕ Yeni El (Tur) Ekle</button>
                     <button id="manual-end-btn" class="btn-primary" style="background-color: #e74c3c;">Partiyi Bitir</button>
@@ -177,16 +177,6 @@
         <div id="status-message">Firebase bağlantısı bekleniyor...</div>
     </div>
 
-    <script type="module" src="app.js?v=5.1"></script>
-    <div id="profile-settings" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-    <h3>⚙️ Hesap Ayarları</h3>
-    <input type="text" id="edit-username" placeholder="Yeni Kullanıcı Adı" style="width: 100%; margin-bottom: 5px;">
-    <input type="text" id="edit-avatar" placeholder="Yeni Avatar (Emoji)" style="width: 100%; margin-bottom: 5px;">
-    <button id="update-profile-btn" class="btn-secondary" style="width: 100%;">Profili Güncelle</button>
-    
-    <button id="delete-account-btn" style="width: 100%; margin-top: 15px; background: #ffeded; color: #e74c3c; border: 1px solid #e74c3c; padding: 8px; border-radius: 6px; cursor: pointer;">
-        ❌ Hesabımı Kalıcı Olarak Sil
-    </button>
-</div>
+    <script type="module" src="app.js?v=5.4"></script>
 </body>
 </html>
