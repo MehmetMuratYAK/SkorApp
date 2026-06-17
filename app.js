@@ -1,10 +1,11 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+// GÜNCELLEME: Şifre güncellemek için updatePassword modülü dahil edildi
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// FIREBASE YAPILANDIRMASI
+// FIREBASE YAPILANDIRMASI (GERÇEK ÇALIŞAN API ANAHTARINI BURAYA YAZ)
 const firebaseConfig = {
-  apiKey: "AIzaSyA963gL6nAee0JZ1lW5Utbfz4UL9n8VFdg", 
+  apiKey: "AIzaSyA963gL6nAee0JZ11W5Utbfz4UL9n8VFdg", 
   authDomain: "skorapp-cc771.firebaseapp.com",
   projectId: "skorapp-cc771",
   storageBucket: "skorapp-cc771.firebasestorage.app",
@@ -117,7 +118,6 @@ toggleAuthBtn.addEventListener("click", () => {
     }
 });
 
-// Klasik E-posta ile Giriş / Kayıt
 authPrimaryBtn.addEventListener("click", async () => {
     const email = authEmailInput.value.trim();
     const password = authPasswordInput.value.trim();
@@ -154,7 +154,6 @@ authPrimaryBtn.addEventListener("click", async () => {
     }
 });
 
-// Google ile Giriş / Kayıt (Gmail Entegrasyonu)
 googleAuthBtn.addEventListener("click", async () => {
     statusMsg.innerText = "⏳ Google penceresi bekleniyor...";
     try {
@@ -162,7 +161,6 @@ googleAuthBtn.addEventListener("click", async () => {
         const userDocRef = doc(db, "users", result.user.uid);
         const userDoc = await getDoc(userDocRef);
         
-        // Eğer kullanıcı veritabanında ilk kez görünüyorsa otomatik profil aç
         if (!userDoc.exists()) {
             await setDoc(userDocRef, {
                 username: result.user.displayName || "Google Kullanıcısı",
@@ -224,9 +222,12 @@ onAuthStateChanged(auth, async (user) => {
             if (currentUserData.isAdmin) {
                 userBadge.innerText = "⭐ Premium Üye";
                 userBadge.style.background = "#f1c40f";
+                // AKILLI ÖZELLİK: Zaten premium ise yükseltme butonunu gizle
+                document.getElementById("upgrade-premium-btn").style.display = "none";
             } else {
                 userBadge.innerText = "👤 Standart Üye";
                 userBadge.style.background = "#7f8c8d";
+                document.getElementById("upgrade-premium-btn").style.display = "block";
             }
         }
         statusMsg.innerText = "✅ Oturum Açık";
@@ -239,7 +240,6 @@ onAuthStateChanged(auth, async (user) => {
         endScreen.style.display = "none";
         summaryScreen.style.display = "none";
         authScreen.style.display = "block";
-        statusMsg.innerText = "🔒 Oturum Açık Değil";
     }
 });
 
@@ -304,7 +304,7 @@ async function fetchGroups() {
 async function showGroupDetails(groupId) {
     dashboardScreen.style.display = "none";
     groupDetailScreen.style.display = "block";
-    statusMsg.innerText = "⏳ Grup kütüğü indiriliyor...";
+    statusMsg.innerText = "⏳ Grup kütüğü buluttan indiriliyor...";
 
     const groupDoc = await getDoc(doc(db, "groups", groupId));
     if (groupDoc.exists()) {
@@ -345,7 +345,7 @@ async function showGroupDetails(groupId) {
                     </div>`;
             });
         }
-        statusMsg.innerText = "✅ Grup verileri senkronize.";
+        statusMsg.innerText = "✅ Grup verileri yüklendi.";
     }
 }
 
@@ -704,6 +704,98 @@ endCompletelyBtn.addEventListener("click", async () => {
     }
 });
 
+// --- YENİ EKLENEN: PROFİL YÖNETİMİ, ŞİFRE DEĞİŞTİRME VE PREMIUM LİSANS MOTORU ---
+
+const updateProfileBtn = document.getElementById("update-profile-btn");
+const updatePasswordBtn = document.getElementById("update-password-btn");
+const upgradePremiumBtn = document.getElementById("upgrade-premium-btn");
+const deleteAccountBtn = document.getElementById("delete-account-btn");
+
+// 1. Profil Bilgilerini Güncelleme (İsim ve Seçmeli Avatar)
+updateProfileBtn.addEventListener("click", async () => {
+    const newUsername = document.getElementById("edit-username").value.trim();
+    const newAvatar = document.getElementById("edit-avatar").value; // Select elementinden gelen değer
+    
+    if (!auth.currentUser) return;
+
+    try {
+        statusMsg.innerText = "⏳ Profil kütüğü güncelleniyor...";
+        await updateDoc(doc(db, "users", auth.currentUser.uid), {
+            username: newUsername || currentUserData.username,
+            avatar: newAvatar || currentUserData.avatar
+        });
+        alert("Profiliniz başarıyla güncellendi! Değişiklikleri görmek için sayfa yenilenecektir.");
+        location.reload(); 
+    } catch (error) {
+        alert("Güncelleme hatası: " + error.message);
+    }
+});
+
+// 2. Canlı Şifre Güncelleme Motoru (Firebase Auth tabanlı)
+updatePasswordBtn.addEventListener("click", async () => {
+    const newPassword = document.getElementById("edit-password").value.trim();
+    
+    if (!newPassword) {
+        alert("Lütfen yeni bir şifre yazın!");
+        return;
+    }
+    if (newPassword.length < 6) {
+        alert("Güvenliğiniz için şifre en az 6 karakter olmalıdır!");
+        return;
+    }
+    if (!auth.currentUser) return;
+
+    try {
+        statusMsg.innerText = "⏳ Şifre güvenliği senkronize ediliyor...";
+        await updatePassword(auth.currentUser, newPassword);
+        alert("Şifreniz başarıyla değiştirildi! Bir sonraki girişinizde yeni şifrenizi kullanabilirsiniz.");
+        document.getElementById("edit-password").value = "";
+        statusMsg.innerText = "✅ Şifre güncellendi.";
+    } catch (error) {
+        // Güvenlik notu: Firebase, uzun süredir açık olan oturumlarda şifre değişimine izin vermez, re-auth ister.
+        if (error.code === "auth/requires-recent-login") {
+            alert("Güvenlik nedeniyle bu işlemi yapmadan önce oturumu kapatıp tekrar giriş yapmanız gerekmektedir.");
+        } else {
+            alert("Şifre değiştirme hatası: " + error.message);
+        }
+        statusMsg.innerText = "❌ Şifre güncellenemedi.";
+    }
+});
+
+// 3. Tek Tıkla Premium Lisansa Yükselme Sistemi
+upgradePremiumBtn.addEventListener("click", async () => {
+    if (!auth.currentUser) return;
+    if (confirm("Kendi ekiplerinizi / gruplarınızı kurma yetkisini açmak ve Premium Üye statüsüne yükselmek istiyor musunuz?")) {
+        try {
+            statusMsg.innerText = "⏳ Premium abonelik tanımlanıyor...";
+            await updateDoc(doc(db, "users", auth.currentUser.uid), {
+                isAdmin: true // Veritabanında isAdmin alanı true yapılarak Premium kilitleri açılır
+            });
+            alert("🎉 Tebrikler! Başarıyla Premium Üye statüsüne yükseldiniz. Tüm kilitler açıldı!");
+            location.reload();
+        } catch (error) {
+            alert("Abonelik hatası: " + error.message);
+        }
+    }
+});
+
+// 4. Hesap Kalıcı Olarak Kökten Silme
+deleteAccountBtn.addEventListener("click", async () => {
+    if (!confirm("⚠️ TEHLİKELİ ALAN!\nHesabınızı sildiğinizde ömür boyu turnuva geçmişiniz ve profil kaydınız kalıcı olarak silinecektir. Bu işlemi geri alamazsınız. Emin misiniz?")) return;
+
+    try {
+        statusMsg.innerText = "⏳ Hesap verileri imha ediliyor...";
+        const user = auth.currentUser;
+        await deleteDoc(doc(db, "users", user.uid)); 
+        await user.delete(); 
+        alert("Hesabınız ve tüm verileriniz başarıyla sistemden silindi. Güle güle!");
+        location.reload(); 
+    } catch (error) {
+        alert("Hesap silme hatası: " + error.message);
+        statusMsg.innerText = "❌ İmha başarısız.";
+    }
+});
+
 finalRestartBtn.addEventListener("click", () => {
     currentParty = 1;
     pastParties = [];
@@ -716,42 +808,4 @@ finalRestartBtn.addEventListener("click", () => {
     } else {
         location.reload();
     }
-    // --- PROFİL GÜNCELLEME VE HESAP SİLME ---
-
-const updateProfileBtn = document.getElementById("update-profile-btn");
-const deleteAccountBtn = document.getElementById("delete-account-btn");
-
-// Profil Güncelleme
-updateProfileBtn.addEventListener("click", async () => {
-    const newUsername = document.getElementById("edit-username").value.trim();
-    const newAvatar = document.getElementById("edit-avatar").value.trim();
-    
-    if (!auth.currentUser) return;
-
-    try {
-        await updateDoc(doc(db, "users", auth.currentUser.uid), {
-            username: newUsername || currentUserData.username,
-            avatar: newAvatar || currentUserData.avatar
-        });
-        alert("Profiliniz başarıyla güncellendi!");
-        location.reload(); 
-    } catch (error) {
-        alert("Güncelleme hatası: " + error.message);
-    }
-});
-
-// Hesap Silme
-deleteAccountBtn.addEventListener("click", async () => {
-    if (!confirm("⚠️ DİKKAT: Hesabını sildiğinde tüm verilerin kalıcı olarak silinecek. Emin misin?")) return;
-
-    try {
-        const user = auth.currentUser;
-        await deleteDoc(doc(db, "users", user.uid)); // Veriyi sil
-        await user.delete(); // Hesabı sil
-        alert("Hesabınız silindi.");
-        location.reload(); 
-    } catch (error) {
-        alert("Hesap silme hatası: " + error.message);
-    }
-});
 });
