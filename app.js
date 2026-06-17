@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // FIREBASE YAPILANDIRMASI
@@ -222,7 +222,7 @@ onAuthStateChanged(auth, async (user) => {
             userWelcome.innerText = `Merhaba, ${currentUserData.username}!`;
             
             if (currentUserData.isAdmin) {
-                userBadge.innerText = "⭐ Yönetici (Admin)";
+                userBadge.innerText = "⭐ Premium Üye";
                 userBadge.style.background = "#f1c40f";
             } else {
                 userBadge.innerText = "👤 Standart Üye";
@@ -716,4 +716,42 @@ finalRestartBtn.addEventListener("click", () => {
     } else {
         location.reload();
     }
+    // --- PROFİL GÜNCELLEME VE HESAP SİLME ---
+
+const updateProfileBtn = document.getElementById("update-profile-btn");
+const deleteAccountBtn = document.getElementById("delete-account-btn");
+
+// Profil Güncelleme
+updateProfileBtn.addEventListener("click", async () => {
+    const newUsername = document.getElementById("edit-username").value.trim();
+    const newAvatar = document.getElementById("edit-avatar").value.trim();
+    
+    if (!auth.currentUser) return;
+
+    try {
+        await updateDoc(doc(db, "users", auth.currentUser.uid), {
+            username: newUsername || currentUserData.username,
+            avatar: newAvatar || currentUserData.avatar
+        });
+        alert("Profiliniz başarıyla güncellendi!");
+        location.reload(); 
+    } catch (error) {
+        alert("Güncelleme hatası: " + error.message);
+    }
+});
+
+// Hesap Silme
+deleteAccountBtn.addEventListener("click", async () => {
+    if (!confirm("⚠️ DİKKAT: Hesabını sildiğinde tüm verilerin kalıcı olarak silinecek. Emin misin?")) return;
+
+    try {
+        const user = auth.currentUser;
+        await deleteDoc(doc(db, "users", user.uid)); // Veriyi sil
+        await user.delete(); // Hesabı sil
+        alert("Hesabınız silindi.");
+        location.reload(); 
+    } catch (error) {
+        alert("Hesap silme hatası: " + error.message);
+    }
+});
 });
