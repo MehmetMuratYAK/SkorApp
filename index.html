@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkorApp - Pro</title>
-    <link rel="stylesheet" href="style.css?v=16.0">
+    <link rel="stylesheet" href="style.css?v=17.0">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
@@ -108,19 +108,16 @@
                 </div>
             </div>
 
-            <!-- 3. GRUP DETAY EKRANI (LOBİ) -->
+            <!-- 3. GRUP DETAY EKRANI (LOBİSİ) -->
             <div id="group-detail-screen" style="display: none;">
-                <h2 id="detail-group-name" style="color: #1c7b64; font-size: 24px; margin-bottom: 15px;">Grup Detayı</h2>
                 
-                <div id="group-invite-area" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: left; position: relative;">
-                    <h4 style="color: #2c4d61; font-size: 13px; margin-bottom: 6px;">➕ Gruba Yeni Oyuncu Ekle</h4>
-                    <div class="input-group" style="margin-bottom: 0;">
-                        <input type="text" id="invite-player-search" placeholder="Oyuncu adı yazın... (Örn: Mu)">
-                    </div>
-                    <ul id="invite-search-results" style="display: none; position: absolute; background: white; border: 1px solid #ced4da; width: calc(100% - 30px); max-height: 150px; overflow-y: auto; z-index: 1000; margin-top: 5px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); padding: 0;"></ul>
+                <!-- YENİ DÜZEN: En Üstte Ufak Geri Dönüş Oku İşareti ve Grup İsmi Yan Yana -->
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; text-align: left;">
+                    <button id="detail-back-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #2c4d61; padding: 5px;" title="Ana Menüye Dön">⬅️</button>
+                    <h2 id="detail-group-name" style="color: #1c7b64; font-size: 22px; margin: 0;">🏠 Ekip Adı</h2>
                 </div>
-
-                <!-- MATRİX TABLO VE FİLTRE SEÇİCİLERİ -->
+                
+                <!-- HİYERARŞİ 1: Grup İsminin Hemen Altında Genel Puan Tablosu -->
                 <div style="text-align: left; margin-bottom: 20px;">
                     <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">📊 Genel Puan Tablosu</h3>
                     
@@ -146,8 +143,25 @@
                     </div>
                 </div>
 
-                <!-- SON OYUNAN OYUNLAR VE TARİH ARALIĞI FİLTRE PANELİ -->
-                <div style="text-align: left; margin-bottom: 25px;">
+                <!-- Premium Kısıtlama Bildirisi Kutusu -->
+                <div id="premium-match-notice" style="display: none; background: #fff5f5; border: 1px solid #fecdd3; color: #e11d48; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 15px; text-align: left;">
+                    🔒 Bu grupta yeni maç başlatma yetkisi sadece **Premium Üyelere** aittir. Hesap ayarlarından yükseltme yapabilirsiniz.
+                </div>
+
+                <!-- HİYERARŞİ 2: Puan Tablosunun Altında Yeni Maç Başlat Butonu -->
+                <button id="detail-start-match-btn" class="btn-primary" style="width: 100%; margin-bottom: 20px;">Yeni Maç Başlat</button>
+
+                <!-- HİYERARŞİ 3: Maç Başlat Butonunun Altında Yeni Oyuncu Ekleme Alanı -->
+                <div id="group-invite-area" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: left; position: relative;">
+                    <h4 style="color: #2c4d61; font-size: 13px; margin-bottom: 6px;">➕ Gruba Yeni Oyuncu Ekle</h4>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <input type="text" id="invite-player-search" placeholder="Oyuncu adı yazın... (Örn: Mu)">
+                    </div>
+                    <ul id="invite-search-results" style="display: none; position: absolute; background: white; border: 1px solid #ced4da; width: calc(100% - 30px); max-height: 150px; overflow-y: auto; z-index: 1000; margin-top: 5px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); padding: 0;"></ul>
+                </div>
+
+                <!-- HİYERARŞİ 4: En Altta Geçmiş Son Oynanan Oyunlar Arşivi -->
+                <div style="text-align: left; margin-bottom: 15px;">
                     <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">⏳ Son Oynanan Oyunlar Arşivi</h3>
                     
                     <div style="display: flex; gap: 8px; margin-bottom: 8px;">
@@ -166,7 +180,6 @@
                         </select>
                     </div>
 
-                    <!-- YENİ EKLEMELER: Gelişmiş Tarih Seçim Alanları -->
                     <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: center;">
                         <input type="date" id="archive-filter-start-date" style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid #ced4da; font-size: 12px; height: auto; background: white;">
                         <span style="font-size: 12px; color: #7f8c8d;">-</span>
@@ -174,15 +187,6 @@
                     </div>
 
                     <div id="detail-recent-games" style="display: flex; flex-direction: column; gap: 8px; max-height: 350px; overflow-y: auto; padding-right: 2px;"></div>
-                </div>
-                
-                <div id="premium-match-notice" style="display: none; background: #fff5f5; border: 1px solid #fecdd3; color: #e11d48; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 15px; text-align: left;">
-                    🔒 Bu grupta yeni maç başlatma yetkisi sadece **Premium Üyelere** aittir. Hesap ayarlarından yükseltme yapabilirsiniz.
-                </div>
-
-                <div style="display: flex; gap: 10px;">
-                    <button id="detail-back-btn" class="btn-secondary" style="flex: 1;">Gruplara Dön</button>
-                    <button id="detail-start-match-btn" class="btn-primary" style="flex: 2;">Yeni Maç Başlat</button>
                 </div>
             </div>
 
@@ -269,7 +273,9 @@
                 <h2>📊 Turnuva İstatistik Özeti 📊</h2>
                 <div id="game-count-info" style="font-weight: bold; color: #2c4d61; margin-bottom: 15px; font-size: 15px; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #e1e8ed;"></div>
                 <div id="summary-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 25px;"></div>
-                <button id="final-restart-btn" class="btn-primary">Ana Panele Dön</button>
+                <div style="display: flex; gap: 10px;">
+                    <button id="final-restart-btn" class="btn-primary">Ana Panele Dön</button>
+                </div>
             </div>
         </div>
         

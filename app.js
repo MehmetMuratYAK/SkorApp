@@ -368,14 +368,13 @@ function calculateAndRenderLeaderboard() {
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
                     <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
-                    <td style="width:100px; text-align:center; color:#1c7b64; font-weight:bold;">${row.wins} Maç</td>
-                    <td style="width:100px; text-align:center; color:#e74c3c; font-weight:bold;">${row.losses} Maç</td>
+                    <td style="text-align:center; color:#1c7b64; font-weight:bold;">${row.wins} Maç</td>
+                    <td style="text-align:center; color:#e74c3c; font-weight:bold;">${row.losses} Maç</td>
                 </tr>`;
         });
     }
 }
 
-// 🛠️ TAM İSTEDİĞİN GÜNCELLEME: Düz metin yerine jilet gibi oturan matrix tablo düzeni basar
 function renderFilteredArchive() {
     const gameFilter = archiveFilterGame.value;
     const modeFilter = archiveFilterMode.value;
@@ -416,7 +415,6 @@ function renderFilteredArchive() {
 
         count++;
         
-        // Dinamik Matris Arşiv Tablosu Tasarımı
         let playerNames = [];
         if (game.partyRoundDetails && game.partyRoundDetails.length > 0) {
             playerNames = game.partyRoundDetails[0].playerNames;
@@ -435,7 +433,6 @@ function renderFilteredArchive() {
 
         if (game.partyRoundDetails && game.partyRoundDetails.length > 0) {
             if (game.partyRoundDetails.length === 1) {
-                // Tek bir parti oynandıysa direkt toplam puanları basıyoruz
                 tableHTML += `<tr><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; font-weight: bold; color:#2c4d61;">Toplam Puan</td>`;
                 game.partyRoundDetails[0].finalTotals.forEach(pts => {
                     let sign = pts > 0 ? "+" : "";
@@ -444,7 +441,6 @@ function renderFilteredArchive() {
                 });
                 tableHTML += `</tr>`;
             } else {
-                // Birden fazla parti oynandıysa satırların başına "1. Parti", "2. Parti" yazarak döküyoruz
                 game.partyRoundDetails.forEach((party, pIdx) => {
                     tableHTML += `<tr><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; font-weight: 500; color:#555;">${pIdx + 1}. Parti</td>`;
                     party.finalTotals.forEach((pts, idx) => {
@@ -456,7 +452,6 @@ function renderFilteredArchive() {
                     tableHTML += `</tr>`;
                 });
 
-                // Genel Birikmiş Toplam Satırı
                 tableHTML += `<tr style="background: #fffdf5; font-weight: bold; border-top: 2px solid #ced4da;"><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; color: #2c3e50;">Genel Toplam</td>`;
                 grandTotals.forEach(pts => {
                     let sign = pts > 0 ? "+" : "";
@@ -467,7 +462,6 @@ function renderFilteredArchive() {
             }
         }
 
-        // Parti Galibiyeti Bilgisini de Alt Sütun Çizgisinde Koru (G / M takibi için)
         if (game.partyScores && game.partyScores.length > 0) {
             tableHTML += `<tr style="background: #f8f9fa; font-weight: 500;"><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; color: #7f8c8d;">Parti Galibiyeti</td>`;
             playerNames.forEach(name => {
