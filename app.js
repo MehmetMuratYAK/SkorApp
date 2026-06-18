@@ -124,7 +124,7 @@ const exitGameBtn = document.getElementById("exit-game-btn");
 const scoreInputModal = document.getElementById("score-input-modal");
 const scoreModalTitle = document.getElementById("score-modal-title");
 const modalScoreInput = document.getElementById("modal-score-input");
-const modalScoreCancel = document.getElementById("modal-score-cancel");
+
 const modalScoreConfirm = document.getElementById("modal-score-confirm");
 const modalScoreToggleSign = document.getElementById("modal-score-toggle-sign");
 
@@ -886,10 +886,7 @@ function renderModalScores() {
     }
 }
 
-// İptal butonuna basılırsa kapat
-modalScoreCancel.addEventListener("click", () => {
-    scoreInputModal.style.display = "none";
-});
+
 
 // Tamam butonuna basılırsa skor kaydetme mantığı
 // Tamam butonuna basılırsa skor kaydetme mantığı (Boş bırakıp çıkma destekli)
