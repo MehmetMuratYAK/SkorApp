@@ -192,7 +192,7 @@ onAuthStateChanged(auth, async (user) => {
                 userBadge.innerText = "👤 Standart Üye"; userBadge.style.background = "#7f8c8d"; document.getElementById("upgrade-premium-btn").style.display = "block";
             }
         }
-        statusMsg.innerText = "✅ Oturum Açık"; 
+        statusMsg.innerText = "✅ Sistem Hazır"; 
         await loadAllSystemUsers(); 
         await fetchGroups(); 
     } else {
@@ -285,7 +285,7 @@ async function fetchGroups() {
 
 async function showGroupDetails(groupId) {
     dashboardScreen.style.display = "none"; groupDetailScreen.style.display = "block";
-    statusMsg.innerText = "⏳ Grup kütüğü buluttan indiriliyor..."; invitePlayerSearch.value = ""; inviteSearchResults.style.display = "none";
+    statusMsg.innerText = "⏳ Veriler senkronize ediliyor..."; invitePlayerSearch.value = ""; inviteSearchResults.style.display = "none";
     
     archiveFilterStartDate.value = "";
     archiveFilterEndDate.value = "";
@@ -302,7 +302,7 @@ async function showGroupDetails(groupId) {
 
         calculateAndRenderLeaderboard();
         renderFilteredArchive();
-        statusMsg.innerText = "✅ Grup verileri senkronize.";
+        statusMsg.innerText = "✅ Veriler güncellendi.";
     }
 }
 
@@ -321,7 +321,7 @@ function calculateAndRenderLeaderboard() {
 
     const matchHistory = currentGroupData.recentGames || [];
     matchHistory.forEach(game => {
-        if (game.gameType === targetGame && game.gameMode === targetMode) {
+        if (game.gameType === targetGame && game.gameType === targetGame && game.gameMode === targetMode) {
             if (targetMode === "esli") {
                 if (game.partyScores && game.partyScores.length > 0) {
                     let sortedParty = [...game.partyScores].sort((a,b) => b.wins - a.wins);
@@ -389,7 +389,6 @@ function calculateAndRenderLeaderboard() {
     }
 }
 
-// 🛠️ TAM İSTEDİĞİN GÜNCELLEME 1: "Genel Toplam" satırı bu tablodan tamamen silindi!
 function renderFilteredArchive() {
     const gameFilter = archiveFilterGame.value;
     const modeFilter = archiveFilterMode.value;
@@ -463,12 +462,11 @@ function renderFilteredArchive() {
                     });
                     tableHTML += `</tr>`;
                 });
-                // "Genel Toplam" satırı buradaki kod bloğundan tamamen sökülmüştür.
             }
         }
 
         if (game.partyScores && game.partyScores.length > 0) {
-            tableHTML += `<tr style="background: #f8f9fa; font-weight: 500;"><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; color: #7f8c8d;">Parti Galibiyeti</td>`;
+            tableHTML += `<tr style="background: #f8f9fa; font-weight: 500;"><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; color: #7f8c8d;">Parti Galibiyet</td>`;
             playerNames.forEach(name => {
                 let pScore = game.partyScores.find(s => s.name === name);
                 let wins = pScore ? pScore.wins : 0;
@@ -497,7 +495,7 @@ function renderFilteredArchive() {
     });
 
     if (count === 0) {
-        container.innerHTML = `<div style="color:#7f8c8d; font-style:italic; font-size:13px; text-align:center; padding:10px;">Belirtilen kriterlerde veya tarih aralığında geçmiş oyun kaydı bulunamadı.</div>`;
+        container.innerHTML = `<div style="color:#7f8c8d; font-style:italic; font-size:13px; text-align:center; padding:10px;">Geçmiş oyun kaydı bulunamadı.</div>`;
     }
 }
 
@@ -508,7 +506,7 @@ function showExactHandDetailsModal(gameData) {
     const gameParties = gameData.partyRoundDetails || [];
     
     if (!gameParties || gameParties.length === 0) {
-        modalHTML += `<div style="text-align:center; font-style:italic; color:#7f8c8d; padding:15px;">Bu maça ait el detay puan verisi bulunmuyor.<br><small style="font-size:11px; color:#a1a1a1;">(Sadece yeni tamamlanan maçların el detayları saklanır)</small></div>`;
+        modalHTML += `<div style="text-align:center; font-style:italic; color:#7f8c8d; padding:15px;">Bu maça ait el detay puan verisi bulunmuyor.</div>`;
     } else {
         gameParties.forEach((partyObj, pIdx) => {
             modalHTML += `<div style="margin-top:15px; border-top:2px solid #32546d; padding-top:10px;">
@@ -835,7 +833,6 @@ function endParty() {
 
 nextPartyBtn.addEventListener("click", () => { currentParty += 1; startParty(); });
 
-// 🛠️ TAM İSTEDİĞİN GÜNCELLEME 2: Turnuva özeti ekranı iptal edildi! "Oyunu Bitir" deyince direkt Lobiye (Grup Detayına) yönlenir.
 endCompletelyBtn.addEventListener("click", async () => {
     if (confirm("Turnuvayı bitirip istatistikleri rapora işlemek istiyor musunuz?")) {
         if (currentSelectedGroupId && currentGroupData) {
@@ -853,18 +850,16 @@ endCompletelyBtn.addEventListener("click", async () => {
                 let updatedRecentGames = currentGroupData.recentGames || [];
                 updatedRecentGames.unshift(matchSummary);
                 await updateDoc(groupRef, { recentGames: updatedRecentGames });
-                statusMsg.innerText = "✅ İstatistikler ve Son 5 Oyun buluta işlendi!";
+                statusMsg.innerText = "✅ İstatistikler buluta işlendi!";
             } catch (err) { console.log("Bulut kayıt hatası: ", err); }
         }
 
-        // Oyun bittiği için tüm maç durumunu (state) temizliyoruz
         currentParty = 1;
         pastParties = [];
         rounds = [];
         players = [];
         historyPartyRounds = [];
 
-        // Özet sayfasını es geçip direkt olarak oynanan grubun detay lobisine uçuyoruz
         endScreen.style.display = "none";
         if (currentSelectedGroupId) {
             showGroupDetails(currentSelectedGroupId);
@@ -875,7 +870,7 @@ endCompletelyBtn.addEventListener("click", async () => {
     }
 });
 
-// --- PROFİL MANIPÜLASYONLARI ---
+// --- PROFİL İŞLEMLERİ ---
 const updateProfileBtn = document.getElementById("update-profile-btn");
 const updatePasswordBtn = document.getElementById("update-password-btn");
 const upgradePremiumBtn = document.getElementById("upgrade-premium-btn");
@@ -885,7 +880,7 @@ updateProfileBtn.addEventListener("click", async () => {
     const newUsername = document.getElementById("edit-username").value.trim(); const newAvatar = document.getElementById("edit-avatar").value; 
     if (!auth.currentUser) return;
     try {
-        statusMsg.innerText = "⏳ Profil kütüğü güncelleniyor...";
+        statusMsg.innerText = "⏳ Profil güncelleniyor...";
         await updateDoc(doc(db, "users", auth.currentUser.uid), { username: newUsername || currentUserData.username, avatar: newAvatar || currentUserData.avatar });
         alert("Profiliniz başarıyla güncellendi!"); sideMenuPanel.classList.remove("open"); location.reload(); 
     } catch (error) { alert("Güncelleme hatası: " + error.message); }
@@ -897,7 +892,7 @@ updatePasswordBtn.addEventListener("click", async () => {
     if (newPassword.length < 6) { alert("Şifre en az 6 karakter olmalıdır!"); return; }
     if (!auth.currentUser) return;
     try {
-        statusMsg.innerText = "⏳ Şifre güvenliği senkronize ediliyor...";
+        statusMsg.innerText = "⏳ Şifre güncelleniyor...";
         await updatePassword(auth.currentUser, newPassword); alert("Şifreniz başarıyla değiştirildi!");
         document.getElementById("edit-password").value = ""; sideMenuPanel.classList.remove("open");
     } catch (error) { alert("Şifre değiştirme hatası: " + error.message); }
