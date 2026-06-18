@@ -126,6 +126,7 @@ const scoreModalTitle = document.getElementById("score-modal-title");
 const modalScoreInput = document.getElementById("modal-score-input");
 const modalScoreCancel = document.getElementById("modal-score-cancel");
 const modalScoreConfirm = document.getElementById("modal-score-confirm");
+const modalScoreToggleSign = document.getElementById("modal-score-toggle-sign");
 
 hamburgerBtn.addEventListener("click", () => { sideMenuPanel.classList.add("open"); });
 closeMenuBtn.addEventListener("click", () => { sideMenuPanel.classList.remove("open"); });
@@ -1059,4 +1060,24 @@ leaveGroupBtn.addEventListener("click", async () => {
             alert("Ayrılma hatası: " + error.message);
         }
     }
+    // --- PUAN GİRİŞİNDE ARTI / EKSİ DEĞİŞTİRME FONKSİYONU ---
+modalScoreToggleSign.addEventListener("click", () => {
+    let currentVal = modalScoreInput.value.trim();
+    
+    if (currentVal !== "") {
+        // Eğer sayının başında zaten eksi varsa, eksiyi kaldır (artı yap)
+        if (currentVal.startsWith("-")) {
+            modalScoreInput.value = currentVal.substring(1);
+        } else {
+            // Eğer eksi yoksa, başına eksi işareti koy
+            modalScoreInput.value = "-" + currentVal;
+        }
+    } else {
+        // Eğer kutu tamamen boşsa, direkt eksi işareti koysun, kullanıcı arkasından sayıyı yazar
+        modalScoreInput.value = "-";
+    }
+    
+    // İşlemden sonra klavye odağını kaybetmesin diye tekrar kutuya odaklanıyoruz
+    modalScoreInput.focus();
+});
 });
