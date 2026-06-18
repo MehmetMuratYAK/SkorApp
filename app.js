@@ -120,6 +120,13 @@ const hamburgerBtn = document.getElementById("hamburger-btn");
 const closeMenuBtn = document.getElementById("close-menu-btn");
 const sideMenuPanel = document.getElementById("side-menu-panel");
 
+const exitGameBtn = document.getElementById("exit-game-btn");
+const scoreInputModal = document.getElementById("score-input-modal");
+const scoreModalTitle = document.getElementById("score-modal-title");
+const modalScoreInput = document.getElementById("modal-score-input");
+const modalScoreCancel = document.getElementById("modal-score-cancel");
+const modalScoreConfirm = document.getElementById("modal-score-confirm");
+
 hamburgerBtn.addEventListener("click", () => { sideMenuPanel.classList.add("open"); });
 closeMenuBtn.addEventListener("click", () => { sideMenuPanel.classList.remove("open"); });
 modalCloseBtn.addEventListener("click", () => { matchDetailsModal.style.display = "none"; });
@@ -167,6 +174,56 @@ googleAuthBtn.addEventListener("click", async () => {
             });
         }
     } catch (error) { alert("Google Giriş Hatası: " + error.message); statusMsg.innerText = "❌ Google girişi başarısız."; }
+});
+
+// 1. ÇALIŞMAYAN BUTON FİX: Kayıtsız Hızlı Maç Başlat Butonu
+dashboardQuickBtn.addEventListener("click", () => {
+    isQuickStart = true; 
+    currentSelectedGroupId = null; 
+    dashboardScreen.style.display = "none"; 
+    setupScreen.style.display = "block"; 
+    setupTitle.innerText = "Hızlı Oyun Kurulumu"; 
+    setupAddArea.style.display = "flex"; 
+    setupBackBtn.style.display = "block"; 
+    players = []; 
+    gameModeSelect.value = "tekli"; 
+    updatePlayerInputComponent(); 
+    updateList();
+});
+
+// 2. ÇALIŞMAYAN BUTON FİX: Maç Kurulum Ekranındaki "Geri Dön" Butonu
+setupBackBtn.addEventListener("click", () => {
+    setupScreen.style.display = "none";
+    if (isQuickStart) {
+        if (auth.currentUser) {
+            dashboardScreen.style.display = "block";
+        } else {
+            authScreen.style.display = "block";
+        }
+    } else if (currentSelectedGroupId) {
+        groupDetailScreen.style.display = "block";
+    } else {
+        dashboardScreen.style.display = "block";
+    }
+});
+
+// 3. YENİ ÖZELLİK: Kaydetmeden Oyundan Çıkma Butonu ve Uyarısı
+exitGameBtn.addEventListener("click", () => {
+    if (confirm("Oyundan kaydetmeden çıkmak istediğinize emin misiniz? Tüm mevcut el skorları silinecektir!")) {
+        gameScreen.style.display = "none";
+        currentParty = 1;
+        pastParties = [];
+        rounds = [];
+        players = [];
+        historyPartyRounds = [];
+        
+        if (currentSelectedGroupId) {
+            showGroupDetails(currentSelectedGroupId);
+        } else {
+            dashboardScreen.style.display = "block";
+            fetchGroups();
+        }
+    }
 });
 
 forgotPasswordBtn.addEventListener("click", async () => {
@@ -776,17 +833,52 @@ function renderTable() {
     tfoot.innerHTML = `<tr><th>TOPLAM</th>${totals.map(t => `<th>${t}</th>`).join('')}</tr>`; return totals; 
 }
 
+// Hangi hücreye veri girildiğini hafızada tutmak için değişkenler
+let currentEditRoundIndex = null;
+let currentEditPlayerIndex = null;
+
 window.addScoreToCell = function(rIndex, pIndex) {
-    let points = prompt(`${rIndex + 1}. El - ${players[pIndex].name} için puan girin:`); 
-    if (points !== null && points.trim() !== "") {
+    currentEditRoundIndex = rIndex;
+    currentEditPlayerIndex = pIndex;
+    
+    // Başlığı tarayıcı dışı temiz bir metin yapıyoruz
+    scoreModalTitle.innerText = `${rIndex + 1}. El - ${players[pIndex].name} için puan girin:`;
+    modalScoreInput.value = ""; // Kutuyu temizle
+    scoreInputModal.style.display = "flex"; // Pencereyi aç
+    
+    // Mobil telefonlarda klavyenin (numaratörün) otomatik fırlaması için odaklanıyoruz
+    setTimeout(() => { modalScoreInput.focus(); }, 100);
+};
+
+// İptal butonuna basılırsa kapat
+modalScoreCancel.addEventListener("click", () => {
+    scoreInputModal.style.display = "none";
+});
+
+// Tamam butonuna basılırsa skor kaydetme mantığı
+modalScoreConfirm.addEventListener("click", () => {
+    let points = modalScoreInput.value.trim();
+    if (points !== "") {
         let parsed = parseInt(points);
         if (!isNaN(parsed)) {
-            rounds[rIndex][pIndex].push(parsed); let currentTotals = renderTable(); 
-            let isRoundComplete = rounds[rIndex].every(playerScores => playerScores.length > 0);
+            rounds[currentEditRoundIndex][currentEditPlayerIndex].push(parsed); 
+            let currentTotals = renderTable(); 
+            scoreInputModal.style.display = "none"; // Pencereyi gizle
+            
+            let isRoundComplete = rounds[currentEditRoundIndex].every(playerScores => playerScores.length > 0);
             if (isRoundComplete) { checkAutoEnd(currentTotals); }
-        } else { alert("Lütfen sadece rakam girin!"); }
+        } else { 
+            alert("Lütfen geçerli bir sayı yazın!"); 
+        }
     }
-};
+});
+
+// Klavyeden Enter tuşuna basılırsa da direkt onaylasın (Pratiklik olsun diye)
+modalScoreInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        modalScoreConfirm.click();
+    }
+});
 
 document.getElementById("new-round-btn").addEventListener("click", () => {
     let totals = players.map(() => 0); 
