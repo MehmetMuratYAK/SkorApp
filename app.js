@@ -4,7 +4,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 
 // FIREBASE YAPILANDIRMASI
 const firebaseConfig = {
-  apiKey: "AIzaSyA963gL6nAee0JZ11W5Utbfz4UL9n8VFdg", 
+  apiKey: "AIzaSyA963gL6nAee0JZ1lW5Utbfz4UL9n8VFdg", 
   authDomain: "skorapp-cc771.firebaseapp.com",
   projectId: "skorapp-cc771",
   storageBucket: "skorapp-cc771.firebasestorage.app",
