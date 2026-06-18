@@ -294,6 +294,11 @@
         <div style="background: white; width: 100%; max-width: 360px; border-radius: 16px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center;">
             <h3 id="score-modal-title" style="color: #2c4d61; margin-bottom: 15px; font-size: 16px; font-weight: bold;">Puan Girin</h3>
             
+            <div id="modal-current-scores-container" style="display: none; margin-bottom: 15px; background: #f8f9fa; padding: 10px; border-radius: 10px; border: 1px dashed #ced4da; text-align: left;">
+                <div style="font-size: 11px; color: #7f8c8d; margin-bottom: 6px; font-weight: bold; text-align: center;">Girilen Skorlar (Silmek için dokunun):</div>
+                <div id="modal-scores-list" style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;"></div>
+            </div>
+            
             <input type="text" id="modal-score-input" inputmode="numeric" placeholder="Skor yazın" style="width: 100%; padding: 14px; font-size: 24px; text-align: center; border-radius: 10px; border: 2px solid #ced4da; outline: none; font-weight: bold; margin-bottom: 10px; display: block; box-sizing: border-box;">
             
             <button id="modal-score-toggle-sign" style="width: 100%; background: #f8f9fa; color: #2c3e50; border: 2px solid #ced4da; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-bottom: 20px; display: block; box-sizing: border-box;">
@@ -307,7 +312,7 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=25.0"></script>
+    <script type="module" src="app.js?v=26.0"></script>
 
 </body>
 </html>

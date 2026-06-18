@@ -842,14 +842,49 @@ window.addScoreToCell = function(rIndex, pIndex) {
     currentEditRoundIndex = rIndex;
     currentEditPlayerIndex = pIndex;
     
-    // Başlığı tarayıcı dışı temiz bir metin yapıyoruz
+    // Başlığı güncelleyelim
     scoreModalTitle.innerText = `${rIndex + 1}. El - ${players[pIndex].name} için puan girin:`;
-    modalScoreInput.value = ""; // Kutuyu temizle
+    modalScoreInput.value = ""; // Giriş kutusunu temizle
+    
+    // Eğer bu hücrede daha önce girilmiş skorlar varsa onları listele
+    renderModalScores();
+    
     scoreInputModal.style.display = "flex"; // Pencereyi aç
     
-    // Mobil telefonlarda klavyenin (numaratörün) otomatik fırlaması için odaklanıyoruz
+    // Odaklanma ayarı
     setTimeout(() => { modalScoreInput.focus(); }, 100);
 };
+
+// MODAL İÇİNDEKİ SKORLARI LİSTELEME VE SİLME FONKSİYONU
+function renderModalScores() {
+    const scoresListDiv = document.getElementById("modal-scores-list");
+    const container = document.getElementById("modal-current-scores-container");
+    if (!scoresListDiv || !container) return;
+    
+    // O hücredeki mevcut dizi verisini alıyoruz
+    const currentScores = rounds[currentEditRoundIndex][currentEditPlayerIndex] || [];
+    scoresListDiv.innerHTML = "";
+    
+    if (currentScores.length > 0) {
+        container.style.display = "block";
+        currentScores.forEach((score, sIdx) => {
+            const badge = document.createElement("span");
+            badge.style.cssText = "background: #ffebe9; color: #e74c3c; padding: 6px 10px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #f5c6cb; margin: 2px;";
+            badge.innerHTML = `${score > 0 ? '+' : ''}${score} <span style="color:#721c24; font-weight:bold; font-size:11px;">✕</span>`;
+            badge.title = "Bu skoru silmek için dokunun";
+            
+            // Eğer girilen skora basılırsa o skoru listeden siler
+            badge.addEventListener("click", () => {
+                rounds[currentEditRoundIndex][currentEditPlayerIndex].splice(sIdx, 1);
+                renderTable();        // Arka plandaki ana yazboz tablosunu güncelle
+                renderModalScores();  // Modal penceresindeki listeyi anlık güncelle
+            });
+            scoresListDiv.appendChild(badge);
+        });
+    } else {
+        container.style.display = "none";
+    }
+}
 
 // İptal butonuna basılırsa kapat
 modalScoreCancel.addEventListener("click", () => {
@@ -1034,50 +1069,41 @@ finalRestartBtn.addEventListener("click", () => {
 leaveGroupBtn.addEventListener("click", async () => {
     if (!currentSelectedGroupId || !currentGroupData) return;
     
-    // Kullanıcıya emin olup olmadığını soralım
     if (confirm("Bu gruptan ayrılmak istediğinize emin misiniz? (İstatistikleriniz grupta kalacak, tekrar davet edilirseniz eski puanlarınızdan devam edebilirsiniz)")) {
         try {
             statusMsg.innerText = "⏳ Gruptan ayrılıyor...";
             
-            // Grubun mevcut e-posta listesini al
             let currentEmails = currentGroupData.memberEmails || [];
-            
-            // Sadece çıkış yapan kişinin e-postasını listeden çıkar
             currentEmails = currentEmails.filter(email => email !== auth.currentUser.email);
             
-            // Sadece e-posta listesini güncelle (Members tablosuna dokunmuyoruz, o yüzden verilerin kalıyor)
             const groupRef = doc(db, "groups", currentSelectedGroupId);
             await updateDoc(groupRef, { memberEmails: currentEmails });
             
             alert("Gruptan başarıyla ayrıldınız.");
             
-            // Grup detay ekranını kapat ve ana menüye dön
             groupDetailScreen.style.display = "none";
             dashboardScreen.style.display = "block";
-            fetchGroups(); // Grupları yeniden yükle ki çıktığımız grup ekrandan gitsin
+            fetchGroups(); 
             
         } catch (error) {
             alert("Ayrılma hatası: " + error.message);
         }
     }
-    // --- PUAN GİRİŞİNDE ARTI / EKSİ DEĞİŞTİRME FONKSİYONU ---
+});
+
+// --- PUAN GİRİŞİNDE ARTI / EKSİ DEĞİŞTİRME FONKSİYONU (BAĞIMSIZ HALE GETİRİLDİ) ---
 modalScoreToggleSign.addEventListener("click", () => {
     let currentVal = modalScoreInput.value.trim();
     
     if (currentVal !== "") {
-        // Eğer sayının başında zaten eksi varsa, eksiyi kaldır (artı yap)
         if (currentVal.startsWith("-")) {
             modalScoreInput.value = currentVal.substring(1);
         } else {
-            // Eğer eksi yoksa, başına eksi işareti koy
             modalScoreInput.value = "-" + currentVal;
         }
     } else {
-        // Eğer kutu tamamen boşsa, direkt eksi işareti koysun, kullanıcı arkasından sayıyı yazar
         modalScoreInput.value = "-";
     }
     
-    // İşlemden sonra klavye odağını kaybetmesin diye tekrar kutuya odaklanıyoruz
     modalScoreInput.focus();
-});
 });
