@@ -143,7 +143,7 @@ authPrimaryBtn.addEventListener("click", async () => {
             statusMsg.innerText = "⏳ Oturum açılıyor..."; await signInWithEmailAndPassword(auth, email, password);
         } else {
             const username = authUsernameInput.value.trim();
-            if (!username) { alert("Kullanıcı adı zorunludur!"); return; }
+            if (!username) { alert("Kullanıcı adı şarttır!"); return; }
             statusMsg.innerText = "⏳ Hesap oluşturuluyor...";
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await setDoc(doc(db, "users", userCredential.user.uid), {
@@ -389,6 +389,7 @@ function calculateAndRenderLeaderboard() {
     }
 }
 
+// 🛠️ TAM İSTEDİĞİN GÜNCELLEME 1: "Genel Toplam" satırı bu tablodan tamamen silindi!
 function renderFilteredArchive() {
     const gameFilter = archiveFilterGame.value;
     const modeFilter = archiveFilterMode.value;
@@ -443,8 +444,6 @@ function renderFilteredArchive() {
         });
         tableHTML += `</tr></thead><tbody>`;
 
-        let grandTotals = playerNames.map(() => 0);
-
         if (game.partyRoundDetails && game.partyRoundDetails.length > 0) {
             if (game.partyRoundDetails.length === 1) {
                 tableHTML += `<tr><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; font-weight: bold; color:#2c4d61;">Toplam Puan</td>`;
@@ -457,22 +456,14 @@ function renderFilteredArchive() {
             } else {
                 game.partyRoundDetails.forEach((party, pIdx) => {
                     tableHTML += `<tr><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; font-weight: 500; color:#555;">${pIdx + 1}. Parti</td>`;
-                    party.finalTotals.forEach((pts, idx) => {
-                        grandTotals[idx] += pts;
+                    party.finalTotals.forEach((pts) => {
                         let sign = pts > 0 ? "+" : "";
                         let color = pts >= 0 ? "#333" : "#e74c3c";
                         tableHTML += `<td style="padding: 6px; border: 1px solid #dee2e6; color: ${color};">${sign}${pts}</td>`;
                     });
                     tableHTML += `</tr>`;
                 });
-
-                tableHTML += `<tr style="background: #fffdf5; font-weight: bold; border-top: 2px solid #ced4da;"><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; color: #2c3e50;">Genel Toplam</td>`;
-                grandTotals.forEach(pts => {
-                    let sign = pts > 0 ? "+" : "";
-                    let color = pts >= 0 ? "#1c7b64" : "#e74c3c";
-                    tableHTML += `<td style="padding: 6px; border: 1px solid #dee2e6; color: ${color};">${sign}${pts}</td>`;
-                });
-                tableHTML += `</tr>`;
+                // "Genel Toplam" satırı buradaki kod bloğundan tamamen sökülmüştür.
             }
         }
 
@@ -593,7 +584,6 @@ detailStartMatchBtn.addEventListener("click", () => {
     updateList();
 });
 
-// 🛠️ DÜZELTME SİHRİ: Eşli modun oyuncu seçim kutuları artık gizleme çakışmasından tamamen kurtuldu!
 function updatePlayerInputComponent() {
     const mode = gameModeSelect.value;
     const esliTeamsArea = document.getElementById("esli-teams-area");
@@ -611,7 +601,6 @@ function updatePlayerInputComponent() {
             playerInputWrapper.innerHTML = `<input type="text" id="player-name" placeholder="Oyuncu Adı">`;
         }
     } else {
-        // Tekli alanları kapatıp tamamen bağımsız eşli alanı görünür yapıyoruz
         document.getElementById("setup-add-area").style.display = "none";
         document.getElementById("player-list").style.display = "none";
         esliTeamsArea.style.display = "block";
@@ -683,24 +672,6 @@ function updatePlayerInputComponent() {
     }
 }
 
-gameModeSelect.addEventListener("change", () => {
-    players = []; 
-    updatePlayerInputComponent();
-    updateList();
-});
-
-setupBackBtn.addEventListener("click", () => {
-    setupScreen.style.display = "none";
-    if (isQuickStart) { authScreen.style.display = "block"; } 
-    else if (currentSelectedGroupId) { groupDetailScreen.style.display = "block"; } 
-    else { dashboardScreen.style.display = "block"; }
-});
-
-dashboardQuickBtn.addEventListener("click", () => {
-    currentSelectedGroupId = null; currentGroupData = null; dashboardScreen.style.display = "none"; setupScreen.style.display = "block"; setupTitle.innerText = "Hızlı Oyun Kurulumu"; setupAddArea.style.display = "flex"; setupBackBtn.style.display = "block"; players = []; historyPartyRounds = [];
-    gameModeSelect.value = "tekli"; updatePlayerInputComponent(); updateList();
-});
-
 // --- ÇETELE MATEMATİK MOTORU ---
 
 function autoConfigureGameSettings() {
@@ -742,9 +713,7 @@ function updateList() {
 }
 
 window.removePlayer = function(index) { players.splice(index, 1); updateList(); };
-startMatchBtn.addEventListener("click", () => { setupScreen.style.display = "none"; selectedGameName = gameTypeSelect.options[gameTypeSelect.selectedIndex].text; startParty(); 
-
-});
+startMatchBtn.addEventListener("click", () => { setupScreen.style.display = "none"; selectedGameName = gameTypeSelect.options[gameTypeSelect.selectedIndex].text; startParty(); });
 
 function startParty() {
     gameScreen.style.display = "block"; endScreen.style.display = "none"; summaryScreen.style.display = "none";
@@ -866,13 +835,9 @@ function endParty() {
 
 nextPartyBtn.addEventListener("click", () => { currentParty += 1; startParty(); });
 
+// 🛠️ TAM İSTEDİĞİN GÜNCELLEME 2: Turnuva özeti ekranı iptal edildi! "Oyunu Bitir" deyince direkt Lobiye (Grup Detayına) yönlenir.
 endCompletelyBtn.addEventListener("click", async () => {
     if (confirm("Turnuvayı bitirip istatistikleri rapora işlemek istiyor musunuz?")) {
-        endScreen.style.display = "none"; summaryScreen.style.display = "block";
-        const statType = statTypeSelect.value; let playedPartyCount = pastParties.length;
-        let totalGamesCount = statType === "per-party" ? playedPartyCount : (playedPartyCount > 0 ? 1 : 0);
-        gameCountInfo.innerText = `🎮 Toplam Değerlendirilen ${selectedGameName} Oyunu Sayısı: ${totalGamesCount}`;
-        
         if (currentSelectedGroupId && currentGroupData) {
             statusMsg.innerText = "⏳ Maç özeti buluta yazılıyor...";
             try {
@@ -892,14 +857,21 @@ endCompletelyBtn.addEventListener("click", async () => {
             } catch (err) { console.log("Bulut kayıt hatası: ", err); }
         }
 
-        summaryList.innerHTML = "";
-        players.forEach(p => {
-            let placementBadges = [];
-            for (let i = 1; i <= players.length; i++) {
-                let count = p.placements[i] || 0; if (count > 0) { placementBadges.push(`<span style="background: #eaf2f8; color: #2980b9; padding: 4px 10px; border-radius: 6px; border: 1px solid #d4e6f1; font-size: 13px; font-weight: bold;">${i}.lik: ${count} Kez</span>`); }
-            }
-            summaryList.innerHTML += `<div style="background: #ffffff; border: 1px solid #dee2e6; padding: 15px; border-radius: 12px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.02);"><strong style="color: #1c7b64; font-size: 16px; display: block; margin-bottom: 8px;">👤 ${p.name}</strong><div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">${placementBadges.join('')}</div><div style="font-size: 13px; color: #7f8c8d; font-weight: 500;">🏆 Bu Turnuvadaki Toplam Parti Galibiyeti: ${p.wins}</div></div>`;
-        });
+        // Oyun bittiği için tüm maç durumunu (state) temizliyoruz
+        currentParty = 1;
+        pastParties = [];
+        rounds = [];
+        players = [];
+        historyPartyRounds = [];
+
+        // Özet sayfasını es geçip direkt olarak oynanan grubun detay lobisine uçuyoruz
+        endScreen.style.display = "none";
+        if (currentSelectedGroupId) {
+            showGroupDetails(currentSelectedGroupId);
+        } else {
+            dashboardScreen.style.display = "block";
+            fetchGroups();
+        }
     }
 });
 
