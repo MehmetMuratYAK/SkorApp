@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// FIREBASE YAPILANDIRMASI
+// FIREBASE YAPILANDIRMASI (GERÇEK API ANAHTARINIZI BURAYA YAZIN)
 const firebaseConfig = {
   apiKey: "AIzaSyA963gL6nAee0JZ1lW5Utbfz4UL9n8VFdg", 
   authDomain: "skorapp-cc771.firebaseapp.com",
@@ -31,7 +31,7 @@ let rounds = [];
 let pastParties = []; 
 let currentParty = 1;
 let selectedGameName = "";
-let historyPartyRounds = []; // Partilerin anlık el detaylarını hafızada tutan kritik dizi
+let historyPartyRounds = []; 
 
 // ELEMAN SEÇİCİLER (DOM)
 const authScreen = document.getElementById("auth-screen");
@@ -289,7 +289,6 @@ async function showGroupDetails(groupId) {
     }
 }
 
-// 🛠️ DÜZELTME: display:flex çakışmasını önlemek için class="leaderboard-row" satırları tablodan temizlendi, saf tablo düzenine geçildi
 function calculateAndRenderLeaderboard() {
     const targetGame = leaderboardGameSelect.value;
     const targetMode = leaderboardModeSelect.value;
@@ -348,10 +347,10 @@ function calculateAndRenderLeaderboard() {
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
                     <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
-                    <td style="text-align:center; color:#1c7b64; font-weight:bold;">${row.p1}</td>
-                    <td style="text-align:center;">${row.p2}</td>
-                    <td style="text-align:center;">${row.p3}</td>
-                    <td style="text-align:center; color:#e74c3c;">${row.p4}</td>
+                    <td style="width:60px; text-align:center; color:#1c7b64; font-weight:bold;">${row.p1}</td>
+                    <td style="width:60px; text-align:center;">${row.p2}</td>
+                    <td style="width:60px; text-align:center;">${row.p3}</td>
+                    <td style="width:60px; text-align:center; color:#e74c3c;">${row.p4}</td>
                 </tr>`;
         });
     } 
@@ -363,8 +362,8 @@ function calculateAndRenderLeaderboard() {
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
                     <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
-                    <td style="text-align:center; color:#1c7b64; font-weight:bold;">${row.wins} Maç</td>
-                    <td style="text-align:center; color:#e74c3c; font-weight:bold;">${row.losses} Maç</td>
+                    <td style="width:100px; text-align:center; color:#1c7b64; font-weight:bold;">${row.wins} Maç</td>
+                    <td style="width:100px; text-align:center; color:#e74c3c; font-weight:bold;">${row.losses} Maç</td>
                 </tr>`;
         });
     }
@@ -411,6 +410,7 @@ function renderFilteredArchive() {
     }
 }
 
+// SİHRALİ DÜZELTME: Veritabanından gelen yeni nesne tabanlı el detay mimarisini okur
 function showExactHandDetailsModal(gameData) {
     modalMatchTitle.innerText = `📊 ${gameData.gameName} - El Skor Geçmişi`;
     let modalHTML = `<div style="font-size:13px; color:#7f8c8d; margin-bottom:10px;"><strong>Tarih:</strong> ${gameData.date || '-'} | <strong>Mod:</strong> ${gameData.gameMode === 'esli' ? 'Eşli (2 Takım)' : 'Tekli'}</div>`;
@@ -418,7 +418,7 @@ function showExactHandDetailsModal(gameData) {
     const gameParties = gameData.partyRoundDetails || [];
     
     if (!gameParties || gameParties.length === 0) {
-        modalHTML += `<div style="text-align:center; font-style:italic; color:#7f8c8d; padding:15px;">Bu maça ait el detay puan verisi bulunmuyor.<br><small style="font-size:11px; color:#a1a1a1;">(Sadece v9.0 güncellemesi sonrası tamamlanan yeni maçların el detayları saklanır)</small></div>`;
+        modalHTML += `<div style="text-align:center; font-style:italic; color:#7f8c8d; padding:15px;">Bu maça ait el detay puan verisi bulunmuyor.<br><small style="font-size:11px; color:#a1a1a1;">(Sadece bu güncelleme sonrası tamamlanan yeni maçların el detayları saklanır)</small></div>`;
     } else {
         gameParties.forEach((partyObj, pIdx) => {
             modalHTML += `<div style="margin-top:15px; border-top:2px solid #32546d; padding-top:10px;">
@@ -434,9 +434,10 @@ function showExactHandDetailsModal(gameData) {
             modalHTML += `</tr></thead><tbody>`;
 
             if (partyObj.handRounds && partyObj.handRounds.length > 0) {
-                partyObj.handRounds.forEach((hand, hIdx) => {
+                partyObj.handRounds.forEach((roundObj, hIdx) => {
                     modalHTML += `<tr><td style="padding:6px; border:1px solid #dee2e6; font-weight:bold;">${hIdx + 1}. El</td>`;
-                    hand.forEach(scoresArray => {
+                    partyObj.playerNames.forEach(name => {
+                        let scoresArray = roundObj[name] || [];
                         let totalCellScore = scoresArray.reduce((sum, score) => sum + score, 0);
                         let sign = totalCellScore > 0 ? "+" : "";
                         let color = totalCellScore >= 0 ? "#333" : "#e74c3c";
@@ -473,7 +474,7 @@ detailStartMatchBtn.addEventListener("click", () => {
     
     gameModeSelect.value = "tekli";
     players = []; 
-    historyPartyRounds = []; // Maç kurulurken detay hafızayı sıfırlıyoruz
+    historyPartyRounds = []; 
     
     updatePlayerInputComponent();
     updateList();
@@ -630,6 +631,7 @@ function checkAutoEnd(totals) {
 
 manualEndBtn.addEventListener("click", () => { if (confirm("Bu partiyi bitirip sonuçları görmek istediğinize emin misiniz?")) { endParty(); } });
 
+// GÜNCELLEME: Firestore kurallarına tam uyum için çok katmanlı listeyi nesne formatına çevirir
 function endParty() {
     gameScreen.style.display = "none"; endScreen.style.display = "block";
     
@@ -637,10 +639,17 @@ function endParty() {
         let totalScore = 0; rounds.forEach(round => { if (round[i]) { round[i].forEach(score => { totalScore += score; }); } }); return totalScore;
     });
 
-    // 🛠️ DÜZELTME: Partinin içindeki el puan listesini derinlemesine klonlayarak diziye ekliyoruz
+    let formattedRounds = rounds.map(round => {
+        let roundObj = {};
+        players.forEach((p, pIdx) => {
+            roundObj[p.name] = round[pIdx] || [];
+        });
+        return roundObj;
+    });
+
     historyPartyRounds.push({
         playerNames: players.map(p => p.name),
-        handRounds: JSON.parse(JSON.stringify(rounds)), 
+        handRounds: formattedRounds, 
         finalTotals: partyTotalsOrdered
     });
 
@@ -680,7 +689,6 @@ endCompletelyBtn.addEventListener("click", async () => {
             try {
                 const groupRef = doc(db, "groups", currentSelectedGroupId);
                 
-                // 🛠️ DÜZELTME: Eksik olan gameType, gameMode ve partyRoundDetails alanları matchSummary nesnesine eksiksiz dahil edildi
                 let matchSummary = { 
                     gameName: selectedGameName, 
                     gameType: gameTypeSelect.value,
