@@ -892,20 +892,32 @@ modalScoreCancel.addEventListener("click", () => {
 });
 
 // Tamam butonuna basılırsa skor kaydetme mantığı
+// Tamam butonuna basılırsa skor kaydetme mantığı (Boş bırakıp çıkma destekli)
 modalScoreConfirm.addEventListener("click", () => {
     let points = modalScoreInput.value.trim();
-    if (points !== "") {
-        let parsed = parseInt(points);
-        if (!isNaN(parsed)) {
-            rounds[currentEditRoundIndex][currentEditPlayerIndex].push(parsed); 
-            let currentTotals = renderTable(); 
-            scoreInputModal.style.display = "none"; // Pencereyi gizle
-            
-            let isRoundComplete = rounds[currentEditRoundIndex].every(playerScores => playerScores.length > 0);
-            if (isRoundComplete) { checkAutoEnd(currentTotals); }
-        } else { 
-            alert("Lütfen geçerli bir sayı yazın!"); 
-        }
+    
+    // YENİ KONTROL: Eğer kutu boşsa (Kullanıcı sadece skor silip çıkmak istiyorsa)
+    if (points === "") {
+        let currentTotals = renderTable(); // Tabloyu son duruma göre tazele
+        scoreInputModal.style.display = "none"; // Pencereyi kapat ve çık
+        
+        // Tur bitti mi kontrolünü silme işlemine göre yeniden yapalım
+        let isRoundComplete = rounds[currentEditRoundIndex].every(playerScores => playerScores.length > 0);
+        if (isRoundComplete) { checkAutoEnd(currentTotals); }
+        return; // İşlemi burada bitir, aşağıya geçme
+    }
+    
+    // Eğer kutu doluysa normal yeni skor ekleme mantığı çalışır
+    let parsed = parseInt(points);
+    if (!isNaN(parsed)) {
+        rounds[currentEditRoundIndex][currentEditPlayerIndex].push(parsed); 
+        let currentTotals = renderTable(); 
+        scoreInputModal.style.display = "none"; // Pencereyi gizle
+        
+        let isRoundComplete = rounds[currentEditRoundIndex].every(playerScores => playerScores.length > 0);
+        if (isRoundComplete) { checkAutoEnd(currentTotals); }
+    } else { 
+        alert("Lütfen geçerli bir sayı yazın!"); 
     }
 });
 
