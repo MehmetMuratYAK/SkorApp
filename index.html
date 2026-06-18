@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkorApp - Pro</title>
-    <link rel="stylesheet" href="style.css?v=5.2">
+    <link rel="stylesheet" href="style.css?v=6.0">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
@@ -52,7 +52,12 @@
                         <div id="user-welcome" style="font-weight: bold; color: #2c4d61;">Merhaba!</div>
                         <div id="user-badge" style="font-size: 11px; background: #7f8c8d; color: white; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 3px;">Standart Üye</div>
                     </div>
-                    <button id="logout-btn" style="margin-left: auto; background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;">Çıkış</button>
+                    
+                    <!-- Sağ Üst Buton Grubu: Hamburger ve Çıkış Yan Yana -->
+                    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                        <button id="hamburger-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #2c4d61; padding: 5px;">☰</button>
+                        <button id="logout-btn" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;">Çıkış</button>
+                    </div>
                 </div>
 
                 <h2>Kayıtlı Olduğunuz Ekipler</h2>
@@ -64,20 +69,43 @@
                         <input type="text" id="new-group-name" placeholder="Ekip Adı (Örn: Cuma Batakçıları)">
                         <button id="create-group-btn" class="btn-secondary" style="border-color: #f1c40f; color: #b7950b;">Kur</button>
                     </div>
-                    <small id="group-notice" style="color: #7f8c8d; font-size: 11px;">Grup oluşturmak Admin yetkisi gerektirir.</small>
+                    <small id="group-notice" style="color: #7f8c8d; font-size: 11px;">Grup oluşturmak Premium Üye yetkisi gerektirir.</small>
                 </div>
 
                 <button id="dashboard-quick-btn" class="btn-primary" style="margin-bottom: 25px;">Kayıtsız Hızlı Maç Başlat</button>
 
-                <!-- DOĞRU YER: Hesap Ayarları artık sadece giriş yapınca Dashboard içinde en altta şıkça gözükecek -->
-                <div id="profile-settings" style="margin-top: 30px; border-top: 1px solid #dee2e6; padding-top: 20px; text-align: left;">
-                    <h3 style="color: #2c4d61; font-size: 16px; margin-bottom: 12px;">⚙️ Hesap Ayarları</h3>
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <input type="text" id="edit-username" placeholder="Yeni Kullanıcı Adı" style="width: 100%; margin-bottom: 8px;">
-                        <input type="text" id="edit-avatar" placeholder="Yeni Avatar (Emoji)" style="width: 100%; margin-bottom: 8px;">
+                <!-- SLAYT MENÜ PANELİ (HAYAL ETTİĞİN HAMBURGER ALANI) -->
+                <div id="side-menu-panel" class="side-menu">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;">
+                        <h3 style="color: #2c4d61; margin: 0; font-size: 18px;">⚙️ Hesap Ayarları</h3>
+                        <button id="close-menu-btn" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #7f8c8d;">✕</button>
                     </div>
-                    <button id="update-profile-btn" class="btn-secondary" style="width: 100%; margin-bottom: 10px;">Profili Güncelle</button>
-                    <button id="delete-account-btn" style="width: 100%; background: #ffeded; color: #e74c3c; border: 1px solid #e74c3c; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px;">❌ Hesabımı Kalıcı Olarak Sil</button>
+                    
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label style="font-weight: bold; font-size: 13px; color: #2c4d61;">Kullanıcı Adı Değiştir</label>
+                        <input type="text" id="edit-username" placeholder="Yeni Kullanıcı Adı" style="width: 100%; margin-bottom: 8px;">
+                        
+                        <label style="font-weight: bold; font-size: 13px; color: #2c4d61;">Avatar Seç</label>
+                        <select id="edit-avatar" style="width: 100%; padding: 12px; margin-bottom: 8px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; background: white;">
+                            <option value="">Avatar Değiştirme (Mevcut Kalsın)</option>
+                            <option value="😎">😎 Cool</option>
+                            <option value="👑">👑 Kral / Kraliçe</option>
+                            <option value="🎲">🎲 Oyuncu / Zar</option>
+                            <option value="🎯">🎯 Hedefçi / Tam İsabet</option>
+                            <option value="🦁">🦁 Aslan</option>
+                            <option value="🦊">🦊 Tilki</option>
+                        </select>
+                    </div>
+                    <button id="update-profile-btn" class="btn-secondary" style="width: 100%; margin-bottom: 20px;">Profili Güncelle</button>
+                    
+                    <div class="form-group" style="margin-bottom: 10px; border-top: 1px dashed #dee2e6; padding-top: 15px;">
+                        <label style="font-weight: bold; font-size: 13px; color: #2c4d61;">Güvenlik & Şifre</label>
+                        <input type="password" id="edit-password" placeholder="Yeni Şifre Belirle" style="width: 100%; margin-bottom: 8px;">
+                    </div>
+                    <button id="update-password-btn" class="btn-secondary" style="width: 100%; margin-bottom: 25px;">Şifreyi Değiştir</button>
+                    
+                    <button id="upgrade-premium-btn" class="btn-primary" style="width: 100%; background-color: #f1c40f; color: #2c4d61; margin-bottom: 15px;">👑 Premium Üyeliğe Geç</button>
+                    <button id="delete-account-btn" style="width: 100%; background: #ffeded; color: #e74c3c; border: 1px solid #e74c3c; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold;">❌ Hesabımı Kalıcı Olarak Sil</button>
                 </div>
             </div>
 
@@ -177,6 +205,6 @@
         <div id="status-message">Firebase bağlantısı bekleniyor...</div>
     </div>
 
-    <script type="module" src="app.js?v=5.4"></script>
+    <script type="module" src="app.js?v=6.0"></script>
 </body>
 </html>
