@@ -107,6 +107,9 @@ const leaderboardModeSelect = document.getElementById("leaderboard-mode-select")
 const archiveFilterGame = document.getElementById("archive-filter-game");
 const archiveFilterMode = document.getElementById("archive-filter-mode");
 
+const archiveFilterStartDate = document.getElementById("archive-filter-start-date");
+const archiveFilterEndDate = document.getElementById("archive-filter-end-date");
+
 const matchDetailsModal = document.getElementById("match-details-modal");
 const modalMatchTitle = document.getElementById("modal-match-title");
 const modalMatchContent = document.getElementById("modal-match-content");
@@ -272,6 +275,9 @@ async function fetchGroups() {
 async function showGroupDetails(groupId) {
     dashboardScreen.style.display = "none"; groupDetailScreen.style.display = "block";
     statusMsg.innerText = "⏳ Grup kütüğü buluttan indiriliyor..."; invitePlayerSearch.value = ""; inviteSearchResults.style.display = "none";
+    
+    archiveFilterStartDate.value = "";
+    archiveFilterEndDate.value = "";
 
     const groupDoc = await getDoc(doc(db, "groups", groupId));
     if (groupDoc.exists()) {
@@ -369,10 +375,13 @@ function calculateAndRenderLeaderboard() {
     }
 }
 
-// GÜNCELLEME: Kartın üzerinde toplam puanları ve eğer varsa ayrı ayrı parti skorlarını gösteren arşiv listesi
+// 🛠️ TAM İSTEDİĞİN GÜNCELLEME: Düz metin yerine jilet gibi oturan matrix tablo düzeni basar
 function renderFilteredArchive() {
     const gameFilter = archiveFilterGame.value;
     const modeFilter = archiveFilterMode.value;
+    const startDateVal = archiveFilterStartDate.value; 
+    const endDateVal = archiveFilterEndDate.value; 
+
     const container = document.getElementById("detail-recent-games");
     container.innerHTML = "";
 
@@ -386,46 +395,90 @@ function renderFilteredArchive() {
         if (gameFilter !== "all" && matchGameType !== gameFilter) return;
         if (modeFilter !== "all" && matchGameMode !== modeFilter) return;
 
+        if (game.date) {
+            const dateParts = game.date.split('.');
+            if (dateParts.length === 3) {
+                const gameDateObj = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
+                gameDateObj.setHours(0,0,0,0);
+
+                if (startDateVal) {
+                    const startObj = new Date(startDateVal);
+                    startObj.setHours(0,0,0,0);
+                    if (gameDateObj < startObj) return;
+                }
+                if (endDateVal) {
+                    const endObj = new Date(endDateVal);
+                    endObj.setHours(0,0,0,0);
+                    if (gameDateObj > endObj) return;
+                }
+            }
+        }
+
         count++;
         
-        // 1. Toplam Puanları Hesapla
-        let totalPointsMap = {};
-        if (game.partyRoundDetails) {
-            game.partyRoundDetails.forEach(party => {
-                party.playerNames.forEach((name, pIdx) => {
-                    if (!totalPointsMap[name]) totalPointsMap[name] = 0;
-                    totalPointsMap[name] += party.finalTotals[pIdx] || 0;
-                });
-            });
+        // Dinamik Matris Arşiv Tablosu Tasarımı
+        let playerNames = [];
+        if (game.partyRoundDetails && game.partyRoundDetails.length > 0) {
+            playerNames = game.partyRoundDetails[0].playerNames;
+        } else if (game.partyScores) {
+            playerNames = game.partyScores.map(s => s.name);
         }
 
-        // 2. Genel Galibiyet Bilgisi (Sol Kısım)
-        let scoresHTML = `<div style="margin-bottom: 6px;">🏅 <strong>Parti Galibiyetleri:</strong> ` + 
-            (game.partyScores ? game.partyScores.map(s => `${s.name}: <strong>${s.wins}</strong>`).join(' | ') : "Skor yok") + `</div>`;
-        
-        // 3. Toplam Birikmiş Puanlar Bilgisi (Yeni İstek)
-        let pointStrings = [];
-        for (let name in totalPointsMap) {
-            let pts = totalPointsMap[name];
-            let sign = pts > 0 ? "+" : "";
-            pointStrings.push(`${name}: <strong>${sign}${pts}</strong>`);
-        }
-        if (pointStrings.length > 0) {
-            scoresHTML += `<div style="margin-bottom: 6px; color: #2c4d61; font-size:12.5px; background:#f1f3f5; padding: 4px 8px; border-radius:6px;">📊 <strong>Toplam Maç Puanları:</strong> ${pointStrings.join(' | ')}</div>`;
+        let tableHTML = `<div class="table-responsive" style="margin-top: 10px; margin-bottom: 0; border-radius: 8px;"><table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; background: white;">`;
+        tableHTML += `<thead style="background: #32546d; color: white;"><tr><th style="padding: 6px; text-align: left; font-size:11px;">Parti / Mod</th>`;
+        playerNames.forEach(name => {
+            tableHTML += `<th style="padding: 6px;">${name}</th>`;
+        });
+        tableHTML += `</tr></thead><tbody>`;
+
+        let grandTotals = playerNames.map(() => 0);
+
+        if (game.partyRoundDetails && game.partyRoundDetails.length > 0) {
+            if (game.partyRoundDetails.length === 1) {
+                // Tek bir parti oynandıysa direkt toplam puanları basıyoruz
+                tableHTML += `<tr><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; font-weight: bold; color:#2c4d61;">Toplam Puan</td>`;
+                game.partyRoundDetails[0].finalTotals.forEach(pts => {
+                    let sign = pts > 0 ? "+" : "";
+                    let color = pts >= 0 ? "#1c7b64" : "#e74c3c";
+                    tableHTML += `<td style="padding: 6px; border: 1px solid #dee2e6; font-weight: bold; color: ${color};">${sign}${pts}</td>`;
+                });
+                tableHTML += `</tr>`;
+            } else {
+                // Birden fazla parti oynandıysa satırların başına "1. Parti", "2. Parti" yazarak döküyoruz
+                game.partyRoundDetails.forEach((party, pIdx) => {
+                    tableHTML += `<tr><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; font-weight: 500; color:#555;">${pIdx + 1}. Parti</td>`;
+                    party.finalTotals.forEach((pts, idx) => {
+                        grandTotals[idx] += pts;
+                        let sign = pts > 0 ? "+" : "";
+                        let color = pts >= 0 ? "#333" : "#e74c3c";
+                        tableHTML += `<td style="padding: 6px; border: 1px solid #dee2e6; color: ${color};">${sign}${pts}</td>`;
+                    });
+                    tableHTML += `</tr>`;
+                });
+
+                // Genel Birikmiş Toplam Satırı
+                tableHTML += `<tr style="background: #fffdf5; font-weight: bold; border-top: 2px solid #ced4da;"><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; color: #2c3e50;">Genel Toplam</td>`;
+                grandTotals.forEach(pts => {
+                    let sign = pts > 0 ? "+" : "";
+                    let color = pts >= 0 ? "#1c7b64" : "#e74c3c";
+                    tableHTML += `<td style="padding: 6px; border: 1px solid #dee2e6; color: ${color};">${sign}${pts}</td>`;
+                });
+                tableHTML += `</tr>`;
+            }
         }
 
-        // 4. Eğer Birden Fazla Parti Varsa, Her Partinin Skorunu Ayrı Ayrı Kartta Listele (Yeni İstek)
-        if (game.partyRoundDetails && game.partyRoundDetails.length > 1) {
-            scoresHTML += `<div style="font-size:11.5px; color:#7f8c8d; border-top:1px dashed #e1e8ed; padding-top:5px; margin-top:5px; display:flex; flex-direction:column; gap:2px;">`;
-            game.partyRoundDetails.forEach((party, pIdx) => {
-                let partyStrings = party.playerNames.map((name, idx) => {
-                    let pPts = party.finalTotals[idx];
-                    return `${name}: ${pPts > 0 ? '+' : ''}${pPts}`;
-                });
-                scoresHTML += `<div>🔹 <strong>${pIdx + 1}. Parti Toplamı:</strong> ${partyStrings.join(' | ')}</div>`;
+        // Parti Galibiyeti Bilgisini de Alt Sütun Çizgisinde Koru (G / M takibi için)
+        if (game.partyScores && game.partyScores.length > 0) {
+            tableHTML += `<tr style="background: #f8f9fa; font-weight: 500;"><td style="padding: 6px; border: 1px solid #dee2e6; text-align: left; color: #7f8c8d;">Parti Galibiyeti</td>`;
+            playerNames.forEach(name => {
+                let pScore = game.partyScores.find(s => s.name === name);
+                let wins = pScore ? pScore.wins : 0;
+                tableHTML += `<td style="padding: 6px; border: 1px solid #dee2e6; color: #32546d;">${wins}</td>`;
             });
-            scoresHTML += `</div>`;
+            tableHTML += `</tr>`;
         }
+
+        tableHTML += `</tbody></table></div>`;
         
         const card = document.createElement("div");
         card.className = "recent-game-card";
@@ -437,7 +490,7 @@ function renderFilteredArchive() {
                 <span>🎮 ${game.gameName} (${matchGameMode === 'esli' ? 'Eşli' : 'Tekli'})</span>
                 <span style="font-size:11px; font-weight:normal; color:#1c7b64;">📅 ${game.date || '-'} 🔍 İncele</span>
             </div>
-            <div class="recent-game-scores" style="display:block; color:#333;">${scoresHTML}</div>
+            <div class="recent-game-scores" style="display:block; color:#333; padding:0;">${tableHTML}</div>
         `;
 
         card.addEventListener("click", () => { showExactHandDetailsModal(game); });
@@ -445,11 +498,10 @@ function renderFilteredArchive() {
     });
 
     if (count === 0) {
-        container.innerHTML = `<div style="color:#7f8c8d; font-style:italic; font-size:13px; text-align:center; padding:10px;">Geçmiş oyun kaydı bulunamadı.</div>`;
+        container.innerHTML = `<div style="color:#7f8c8d; font-style:italic; font-size:13px; text-align:center; padding:10px;">Belirtilen kriterlerde veya tarih aralığında geçmiş oyun kaydı bulunamadı.</div>`;
     }
 }
 
-// GÜNCELLEME: Aynı el/tur içerisinde hem artı hem eksi puan girilmişse bunları toplamayıp ayrı ayrı (+5 / -10) gösteren modal
 function showExactHandDetailsModal(gameData) {
     modalMatchTitle.innerText = `📊 ${gameData.gameName} - El Skor Geçmişi`;
     let modalHTML = `<div style="font-size:13px; color:#7f8c8d; margin-bottom:10px;"><strong>Tarih:</strong> ${gameData.date || '-'} | <strong>Mod:</strong> ${gameData.gameMode === 'esli' ? 'Eşli (2 Takım)' : 'Tekli'}</div>`;
@@ -481,13 +533,11 @@ function showExactHandDetailsModal(gameData) {
                         let color = "#333";
                         
                         if (scoresArray.length > 0) {
-                            // KRİTİK İSTEK ÇÖZÜMÜ: Eğer elde hem artı hem eksi varsa toplama, araya slas koyup ayrı ayrı listele (+5 / -10)
                             cellText = scoresArray.map(score => {
                                 let sign = score > 0 ? "+" : "";
                                 return `${sign}${score}`;
                             }).join(" / ");
                             
-                            // Genel renklendirme kararı için toplamı baz alalım
                             let total = scoresArray.reduce((sum, s) => sum + s, 0);
                             if (total < 0) color = "#e74c3c";
                             else if (total > 0) color = "#1c7b64";
@@ -502,7 +552,7 @@ function showExactHandDetailsModal(gameData) {
             modalHTML += `<tr style="background:#fffdf5; font-weight:bold; border-top:2px solid #ced4da;">
                             <td style="padding:6px; border:1px solid #dee2e6; color:#2c3e50;">TOPLAM</td>`;
             partyObj.finalTotals.forEach(tScore => {
-                modalHTML += `<td style="padding:6px; border:1px solid #dee2e6; color:${tScore >= 0 ? '#1c7b64':'#e74c3c'}">${tScore >= 0 ? '+' : ''}${tScore}</td>`;
+                modalHTML += `<td style="padding:6px; border:1px solid #dee2e6; color:${tScore >= 0 ? '#1c7b64':'#e74c3c'}">${tScore > 0 ? '+' : ''}${tScore}</td>`;
             });
 
             modalHTML += `</tr></tbody></table></div></div>`;
@@ -517,6 +567,9 @@ leaderboardGameSelect.addEventListener("change", calculateAndRenderLeaderboard);
 leaderboardModeSelect.addEventListener("change", calculateAndRenderLeaderboard);
 archiveFilterGame.addEventListener("change", renderFilteredArchive);
 archiveFilterMode.addEventListener("change", renderFilteredArchive);
+
+archiveFilterStartDate.addEventListener("change", renderFilteredArchive);
+archiveFilterEndDate.addEventListener("change", renderFilteredArchive);
 
 detailBackBtn.addEventListener("click", () => { groupDetailScreen.style.display = "none"; dashboardScreen.style.display = "block"; fetchGroups(); });
 
