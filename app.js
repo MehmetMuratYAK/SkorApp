@@ -64,6 +64,7 @@ const detailLeaderboard = document.getElementById("detail-leaderboard");
 const detailRecentGames = document.getElementById("detail-recent-games");
 const detailBackBtn = document.getElementById("detail-back-btn");
 const detailStartMatchBtn = document.getElementById("detail-start-match-btn");
+const leaveGroupBtn = document.getElementById("leave-group-btn");
 
 const invitePlayerSearch = document.getElementById("invite-player-search");
 const inviteSearchResults = document.getElementById("invite-search-results");
@@ -232,13 +233,29 @@ invitePlayerSearch.addEventListener("input", () => {
 async function addPlayerToGroup(username, email) {
     if (!currentSelectedGroupId || !currentGroupData) return;
     let currentEmails = currentGroupData.memberEmails || [];
-    if (currentEmails.includes(email)) { alert(`🚨 ${username} zaten bu gruba ekli!`); return; }
-    statusMsg.innerText = "⏳ Oyuncu ekibe dahil ediliyor..."; currentEmails.push(email);
-    let currentMembers = currentGroupData.members || []; currentMembers.push({ name: username, wins: 0, placements: {} });
+    
+    // Zaten grupta aktif mi?
+    if (currentEmails.includes(email)) { alert(`🚨 ${username} zaten bu gruba aktif olarak ekli!`); return; }
+    
+    statusMsg.innerText = "⏳ Oyuncu ekibe dahil ediliyor..."; 
+    currentEmails.push(email);
+    
+    let currentMembers = currentGroupData.members || []; 
+    
+    // KRİTİK NOKTA: Kişi eskiden grupta var mıydı diye kontrol ediyoruz
+    let isUserAlreadyExists = currentMembers.some(m => m.name === username);
+    
+    // Eğer eskiden grupta yoksa (ilk defa geliyorsa) sıfır verilerle listeye ekle
+    // Eğer varsa hiçbir şey yapma, eski istatistikleriyle devam etsin!
+    if (!isUserAlreadyExists) {
+        currentMembers.push({ name: username, wins: 0, placements: {} });
+    }
+    
     try {
         const groupRef = doc(db, "groups", currentSelectedGroupId);
         await updateDoc(groupRef, { memberEmails: currentEmails, members: currentMembers });
-        alert(`🎉 ${username} başarıyla ekibe dahil edildi!`); await showGroupDetails(currentSelectedGroupId);
+        alert(`🎉 ${username} başarıyla ekibe dahil edildi!`); 
+        await showGroupDetails(currentSelectedGroupId);
     } catch (error) { alert("Oyuncu ekleme hatası: " + error.message); }
 }
 
@@ -919,4 +936,35 @@ deleteAccountBtn.addEventListener("click", async () => {
 finalRestartBtn.addEventListener("click", () => {
     currentParty = 1; pastParties = []; rounds = []; players = []; historyPartyRounds = [];
     if (auth.currentUser) { summaryScreen.style.display = "none"; dashboardScreen.style.display = "block"; fetchGroups(); } else { location.reload(); }
+});
+// --- GRUPTAN AYRILMA İŞLEMİ ---
+leaveGroupBtn.addEventListener("click", async () => {
+    if (!currentSelectedGroupId || !currentGroupData) return;
+    
+    // Kullanıcıya emin olup olmadığını soralım
+    if (confirm("Bu gruptan ayrılmak istediğinize emin misiniz? (İstatistikleriniz grupta kalacak, tekrar davet edilirseniz eski puanlarınızdan devam edebilirsiniz)")) {
+        try {
+            statusMsg.innerText = "⏳ Gruptan ayrılıyor...";
+            
+            // Grubun mevcut e-posta listesini al
+            let currentEmails = currentGroupData.memberEmails || [];
+            
+            // Sadece çıkış yapan kişinin e-postasını listeden çıkar
+            currentEmails = currentEmails.filter(email => email !== auth.currentUser.email);
+            
+            // Sadece e-posta listesini güncelle (Members tablosuna dokunmuyoruz, o yüzden verilerin kalıyor)
+            const groupRef = doc(db, "groups", currentSelectedGroupId);
+            await updateDoc(groupRef, { memberEmails: currentEmails });
+            
+            alert("Gruptan başarıyla ayrıldınız.");
+            
+            // Grup detay ekranını kapat ve ana menüye dön
+            groupDetailScreen.style.display = "none";
+            dashboardScreen.style.display = "block";
+            fetchGroups(); // Grupları yeniden yükle ki çıktığımız grup ekrandan gitsin
+            
+        } catch (error) {
+            alert("Ayrılma hatası: " + error.message);
+        }
+    }
 });
