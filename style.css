@@ -2,7 +2,6 @@
 
 body { background-color: #f4f6f9; color: #333333; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; text-align: center; padding: 20px 0; }
 
-/* ÖNEMLİ: Kutu dışına taşmaları kesmek ve menüyü gizlemek için güncellendi */
 .container { position: relative; overflow: hidden; width: 100%; max-width: 500px; padding: 30px 20px; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e1e8ed; margin: auto;}
 
 h1 { color: #2c4d61; margin-bottom: 10px; font-size: 28px; }
@@ -61,20 +60,19 @@ tfoot th { background: #f1f3f5; font-size: 18px; color: #2c3e50; border-top: 2px
 .group-info-text { font-size: 14px; color: #333; }
 .group-play-btn { background: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px;}
 
-/* 🛠️ HAMBURGER MENÜ PANEL SİHRİ */
 .side-menu {
     position: absolute;
     top: 0;
-    right: -100%; /* Başlangıçta tamamen sağda gizli */
+    right: -100%; 
     width: 100%;
     height: 100%;
     background: #ffffff;
     z-index: 999;
     padding: 25px 20px;
-    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Yumuşak kayma efekti */
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
     text-align: left;
     overflow-y: auto;
 }
 .side-menu.open {
-    right: 0; /* Tetiklendiğinde kutunun içine kayacak */
+    right: 0; 
 }
