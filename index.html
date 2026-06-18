@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkorApp - Pro</title>
-    <link rel="stylesheet" href="style.css?v=7.5">
+    <link rel="stylesheet" href="style.css?v=9.0">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
@@ -120,13 +120,53 @@
                     <ul id="invite-search-results" style="display: none; position: absolute; background: white; border: 1px solid #ced4da; width: calc(100% - 30px); max-height: 150px; overflow-y: auto; z-index: 1000; margin-top: 5px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); padding: 0;"></ul>
                 </div>
 
+                <!-- GÜNCELLEME: MATRİX TABLO VE FİLTRE SEÇİCİLERİ -->
                 <div style="text-align: left; margin-bottom: 20px;">
                     <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">📊 Genel Puan Tablosu</h3>
-                    <div id="detail-leaderboard" style="background: #ffffff; border: 1px solid #dee2e6; border-radius: 12px; padding: 10px;"></div>
+                    
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <select id="leaderboard-game-select" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ced4da;">
+                            <option value="pisti">Pişti</option>
+                            <option value="okey">Okey (Düz)</option>
+                            <option value="101">101 Okey</option>
+                            <option value="batak">Batak</option>
+                            <option value="king">King</option>
+                        </select>
+                        <select id="leaderboard-mode-select" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ced4da;">
+                            <option value="tekli">Tekli (Matrix)</option>
+                            <option value="esli">Eşli (G / M)</option>
+                        </select>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <thead id="leaderboard-thead" style="background: #32546d; color: white;"></thead>
+                            <tbody id="detail-leaderboard"></tbody>
+                        </table>
+                    </div>
                 </div>
+
+                <!-- GÜNCELLEME: GEÇMİŞ MAÇLAR VE GEÇMİŞ FİLTRE PANELİ -->
                 <div style="text-align: left; margin-bottom: 25px;">
-                    <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">⏳ Son Oynanan 5 Oyun</h3>
-                    <div id="detail-recent-games" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">⏳ Son Oynanan Oyunlar Arşivi</h3>
+                    
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <select id="archive-filter-game" style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid #ced4da; font-size: 12px;">
+                            <option value="all">Tüm Oyunlar</option>
+                            <option value="pisti">Pişti</option>
+                            <option value="okey">Okey</option>
+                            <option value="101">101 Okey</option>
+                            <option value="batak">Batak</option>
+                            <option value="king">King</option>
+                        </select>
+                        <select id="archive-filter-mode" style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid #ced4da; font-size: 12px;">
+                            <option value="all">Tüm Modlar</option>
+                            <option value="tekli">Tekli</option>
+                            <option value="esli">Eşli</option>
+                        </select>
+                    </div>
+
+                    <div id="detail-recent-games" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; padding-right: 2px;"></div>
                 </div>
                 
                 <div id="premium-match-notice" style="display: none; background: #fff5f5; border: 1px solid #fecdd3; color: #e11d48; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 15px; text-align: left;">
@@ -143,7 +183,6 @@
             <div id="setup-screen" style="display: none;">
                 <h2 id="setup-title">Oyuncuları Seç</h2>
                 
-                <!-- YENİ: Tekli mi Eşli mi Seçim Alanı -->
                 <div style="text-align: left; margin-bottom: 15px;">
                     <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Oyun Modu:</label>
                     <select id="game-mode" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; background: white;">
@@ -153,7 +192,9 @@
                 </div>
 
                 <div id="setup-add-area" class="input-group">
-                    <input type="text" id="player-name" placeholder="Oyuncu Adı">
+                    <div id="player-input-wrapper" style="flex: 1; display: flex; width: 100%;">
+                        <input type="text" id="player-name" placeholder="Oyuncu Adı">
+                    </div>
                     <button id="add-player-btn" class="btn-secondary">Ekle</button>
                 </div>
                 <ul id="player-list"></ul>
@@ -228,6 +269,17 @@
         <div id="status-message">Firebase bağlantısı bekleniyor...</div>
     </div>
 
-    <script type="module" src="app.js?v=7.5"></script>
+    <!-- GÜNCELLEME: APAYRI EL SKOR DETAYLARI İÇİN AÇILIR MODAL KUTUSU -->
+    <div id="match-details-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 5000; justify-content: center; align-items: center; padding: 15px;">
+        <div style="background: white; width: 100%; max-width: 460px; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 85vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                <h3 id="modal-match-title" style="color: #2c4d61; margin: 0; font-size: 18px;">🎮 Maç Detayları</h3>
+                <button id="modal-close-btn" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #7f8c8d;">✕</button>
+            </div>
+            <div id="modal-match-content"></div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js?v=9.0"></script>
 </body>
 </html>
