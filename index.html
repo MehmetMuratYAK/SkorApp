@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkorApp - Pro</title>
-    <link rel="stylesheet" href="style.css?v=18.0">
+    <link rel="stylesheet" href="style.css?v=19.0">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
@@ -120,14 +120,14 @@
                     <div style="display: flex; gap: 8px; margin-bottom: 10px;">
                         <select id="leaderboard-game-select" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ced4da;">
                             <option value="pisti">Pişti</option>
-                            <option value="okey">Okey (Düz)</option>
-                            <option value="101">101 Okey</option>
+                            <option value="okey">Okey </option>
+                            <option value="101">101 </option>
                             <option value="batak">Batak</option>
                             <option value="king">King</option>
                         </select>
                         <select id="leaderboard-mode-select" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ced4da;">
-                            <option value="tekli">Tekli (Matrix)</option>
-                            <option value="esli">Eşli (G / M)</option>
+                            <option value="tekli">Tekli </option>
+                            <option value="esli">Eşli </option>
                         </select>
                     </div>
                     <div class="table-responsive">
@@ -159,7 +159,7 @@
                             <option value="all">Tüm Oyunlar</option>
                             <option value="pisti">Pişti</option>
                             <option value="okey">Okey</option>
-                            <option value="101">101 Okey</option>
+                            <option value="101">101 </option>
                             <option value="batak">Batak</option>
                             <option value="king">King</option>
                         </select>
@@ -190,6 +190,7 @@
                     </select>
                 </div>
 
+                <!-- TEKLİ MOD SEÇİLİRSE GÖZÜKECEK EKLEME ALANI -->
                 <div id="setup-add-area" class="input-group">
                     <div id="player-input-wrapper" style="flex: 1; display: flex; width: 100%;">
                         <input type="text" id="player-name" placeholder="Oyuncu Adı">
@@ -197,12 +198,16 @@
                     <button id="add-player-btn" class="btn-secondary">Ekle</button>
                 </div>
                 <ul id="player-list"></ul>
+
+                <!-- 🛠️ ÇÖZÜM ALANI: Eşli takımların listeleneceği, gizleme kurallarından etkilenmeyecek tamamen bağımsız yeni alan -->
+                <div id="esli-teams-area" style="display: none; margin-bottom: 20px;"></div>
+
                 <div id="game-settings-area" style="margin-bottom: 20px; text-align: left; display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6;">
                     <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Hangi Oyun Oynanacak?</label>
                     <select id="game-type" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
                         <option value="pisti">Pişti</option>
-                        <option value="okey">Okey (Düz)</option>
-                        <option value="101">101 Okey</option>
+                        <option value="okey">Okey </option>
+                        <option value="101">101 </option>
                         <option value="batak">Batak</option>
                         <option value="king">King</option>
                     </select>
@@ -280,6 +285,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=18.0"></script>
+    <script type="module" src="app.js?v=20.0"></script>
 </body>
 </html>

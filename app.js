@@ -143,7 +143,7 @@ authPrimaryBtn.addEventListener("click", async () => {
             statusMsg.innerText = "⏳ Oturum açılıyor..."; await signInWithEmailAndPassword(auth, email, password);
         } else {
             const username = authUsernameInput.value.trim();
-            if (!username) { alert("Kullanıcı adı şarttır!"); return; }
+            if (!username) { alert("Kullanıcı adı zorunludur!"); return; }
             statusMsg.innerText = "⏳ Hesap oluşturuluyor...";
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await setDoc(doc(db, "users", userCredential.user.uid), {
@@ -256,7 +256,6 @@ createGroupBtn.addEventListener("click", async () => {
     } catch (error) { alert("Grup kurulamadı: " + error.message); }
 });
 
-// 🛠️ DÜZELTME 1: "Gruba Gir" Butonu tamamen kaldırıldı, tıklama özelliği direkt olarak genişletilmiş kartın kendisine bağlandı!
 async function fetchGroups() {
     groupList.innerHTML = ""; const querySnapshot = await getDocs(collection(db, "groups")); let count = 0;
     querySnapshot.forEach((docSnap) => {
@@ -265,7 +264,7 @@ async function fetchGroups() {
             count++; const li = document.createElement("li"); 
             li.className = "group-item-box";
             li.setAttribute("data-id", docSnap.id);
-            li.style.cursor = "pointer"; // Kartı tıklanabilir yapıyoruz
+            li.style.cursor = "pointer";
             li.innerHTML = `
                 <div class="group-info-text" style="width: 100%;">
                     <strong>🏠 ${group.name}</strong>
@@ -275,7 +274,6 @@ async function fetchGroups() {
         }
     });
     
-    // Kartın bütününe tıklama olayını ekliyoruz
     document.querySelectorAll(".group-item-box").forEach(item => {
         item.addEventListener("click", () => { 
             currentSelectedGroupId = item.getAttribute("data-id"); 
@@ -308,7 +306,6 @@ async function showGroupDetails(groupId) {
     }
 }
 
-// 🛠️ DÜZELTME 3: Eşli oynanan oyunların istatistik puanları takım ortaklarına bireysel olarak ayrı ayrı yansıtılır
 function calculateAndRenderLeaderboard() {
     const targetGame = leaderboardGameSelect.value;
     const targetMode = leaderboardModeSelect.value;
@@ -330,7 +327,6 @@ function calculateAndRenderLeaderboard() {
                     let sortedParty = [...game.partyScores].sort((a,b) => b.wins - a.wins);
                     let maxWins = sortedParty[0].wins;
                     game.partyScores.forEach(pScore => {
-                        // Eğer isim ortaklık bağı barındırıyorsa (" & ") iki oyuncuya da ayrı puan yaz
                         let individualNames = pScore.name.includes(" & ") ? pScore.name.split(" & ") : [pScore.name];
                         individualNames.forEach(singleName => {
                             if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true };
@@ -597,13 +593,16 @@ detailStartMatchBtn.addEventListener("click", () => {
     updateList();
 });
 
-// 🛠️ DÜZELTME 2: Eşli mod seçildiğinde her takım için 2 bağımsız oyuncu seçtirecek gelişmiş panel komponenti basılır!
+// 🛠️ DÜZELTME SİHRİ: Eşli modun oyuncu seçim kutuları artık gizleme çakışmasından tamamen kurtuldu!
 function updatePlayerInputComponent() {
     const mode = gameModeSelect.value;
+    const esliTeamsArea = document.getElementById("esli-teams-area");
+    
     if (mode === "tekli") {
-        // Tekli mod için standart tekli liste akışı korunur
         document.getElementById("setup-add-area").style.display = "flex";
         document.getElementById("player-list").style.display = "block";
+        esliTeamsArea.style.display = "none";
+        
         if (currentSelectedGroupId && currentGroupData) {
             let optionsHTML = currentGroupData.members.map(m => `<option value="${m.name}">👤 ${m.name}</option>`).join('');
             if (optionsHTML === "") { optionsHTML = `<option value="">Grupta oyuncu yok</option>`; }
@@ -612,13 +611,14 @@ function updatePlayerInputComponent() {
             playerInputWrapper.innerHTML = `<input type="text" id="player-name" placeholder="Oyuncu Adı">`;
         }
     } else {
-        // Eşli mod için tek tek ekleme döngüsü gizlenir, doğrudan 2 takımın ortakları seçtirilir
+        // Tekli alanları kapatıp tamamen bağımsız eşli alanı görünür yapıyoruz
         document.getElementById("setup-add-area").style.display = "none";
         document.getElementById("player-list").style.display = "none";
+        esliTeamsArea.style.display = "block";
         
         if (currentSelectedGroupId && currentGroupData) {
             let optionsHTML = currentGroupData.members.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
-            playerInputWrapper.innerHTML = `
+            esliTeamsArea.innerHTML = `
                 <div style="width: 100%; text-align: left; display: flex; flex-direction: column; gap: 15px; background: #fffdf5; padding: 15px; border-radius: 12px; border: 1px solid #f1c40f;">
                     <div>
                         <strong style="color: #b7950b; font-size: 14px; display: block; margin-bottom: 5px;">👥 1. Takım (Ortaklar)</strong>
@@ -638,7 +638,7 @@ function updatePlayerInputComponent() {
                 </div>
             `;
         } else {
-            playerInputWrapper.innerHTML = `
+            esliTeamsArea.innerHTML = `
                 <div style="width: 100%; text-align: left; display: flex; flex-direction: column; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 12px; border: 1px solid #dee2e6;">
                     <div>
                         <strong style="color: #2c4d61; font-size: 14px; display: block; margin-bottom: 5px;">👥 1. Takım (Ortaklar)</strong>
@@ -659,7 +659,6 @@ function updatePlayerInputComponent() {
             `;
         }
         
-        // Eşli kilit butonuna dinleyici atıyoruz
         document.getElementById("confirm-esli-teams-btn").addEventListener("click", () => {
             let p1, p2, p3, p4;
             if (currentSelectedGroupId && currentGroupData) {
@@ -673,7 +672,6 @@ function updatePlayerInputComponent() {
             if (!p1 || !p2 || !p3 || !p4) { alert("Lütfen tüm takım oyuncu seçimlerini eksiksiz doldurun!"); return; }
             if (p1 === p2 || p1 === p3 || p1 === p4 || p2 === p3 || p2 === p4 || p3 === p4) { alert("Aynı oyuncuyu birden fazla kez seçemezsiniz!"); return; }
 
-            // 2 Sütunlu Eşli Takım Formatı oluşturulur
             players = [
                 { name: `${p1} & ${p2}`, wins: 0, placements: {} },
                 { name: `${p3} & ${p4}`, wins: 0, placements: {} }
@@ -715,7 +713,7 @@ function autoConfigureGameSettings() {
 }
 
 addPlayerBtn.addEventListener("click", () => {
-    if (gameModeSelect.value === "esli") return; // Eşli mod kendi kilit dinleyicisini yönetir
+    if (gameModeSelect.value === "esli") return; 
     let name = "";
     if (currentSelectedGroupId && currentGroupData) {
         const selectEl = document.getElementById("player-name-select"); name = selectEl ? selectEl.value : "";
@@ -744,7 +742,9 @@ function updateList() {
 }
 
 window.removePlayer = function(index) { players.splice(index, 1); updateList(); };
-startMatchBtn.addEventListener("click", () => { setupScreen.style.display = "none"; selectedGameName = gameTypeSelect.options[gameTypeSelect.selectedIndex].text; startParty(); });
+startMatchBtn.addEventListener("click", () => { setupScreen.style.display = "none"; selectedGameName = gameTypeSelect.options[gameTypeSelect.selectedIndex].text; startParty(); 
+
+});
 
 function startParty() {
     gameScreen.style.display = "block"; endScreen.style.display = "none"; summaryScreen.style.display = "none";
