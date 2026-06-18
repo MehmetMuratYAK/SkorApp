@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkorApp - Pro</title>
-    <link rel="stylesheet" href="style.css?v=6.0">
+    <link rel="stylesheet" href="style.css?v=7.5">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
@@ -53,7 +53,6 @@
                         <div id="user-badge" style="font-size: 11px; background: #7f8c8d; color: white; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 3px;">Standart Üye</div>
                     </div>
                     
-                    <!-- Sağ Üst Buton Grubu: Hamburger ve Çıkış Yan Yana -->
                     <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
                         <button id="hamburger-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #2c4d61; padding: 5px;">☰</button>
                         <button id="logout-btn" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;">Çıkış</button>
@@ -74,7 +73,7 @@
 
                 <button id="dashboard-quick-btn" class="btn-primary" style="margin-bottom: 25px;">Kayıtsız Hızlı Maç Başlat</button>
 
-                <!-- SLAYT MENÜ PANELİ (HAYAL ETTİĞİN HAMBURGER ALANI) -->
+                <!-- SLAYT MENÜ PANELİ -->
                 <div id="side-menu-panel" class="side-menu">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;">
                         <h3 style="color: #2c4d61; margin: 0; font-size: 18px;">⚙️ Hesap Ayarları</h3>
@@ -91,7 +90,7 @@
                             <option value="😎">😎 Cool</option>
                             <option value="👑">👑 Kral / Kraliçe</option>
                             <option value="🎲">🎲 Oyuncu / Zar</option>
-                            <option value="🎯">🎯 Hedefçi / Tam İsabet</option>
+                            <option value="🎯">🎯 Hedefçi / Tam Hits</option>
                             <option value="🦁">🦁 Aslan</option>
                             <option value="🦊">🦊 Tilki</option>
                         </select>
@@ -112,6 +111,15 @@
             <!-- 3. GRUP DETAY EKRANI (LOBİ) -->
             <div id="group-detail-screen" style="display: none;">
                 <h2 id="detail-group-name" style="color: #1c7b64; font-size: 24px; margin-bottom: 15px;">Grup Detayı</h2>
+                
+                <div id="group-invite-area" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: left; position: relative;">
+                    <h4 style="color: #2c4d61; font-size: 13px; margin-bottom: 6px;">➕ Gruba Yeni Oyuncu Ekle</h4>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <input type="text" id="invite-player-search" placeholder="Oyuncu adı yazın... (Örn: Mu)">
+                    </div>
+                    <ul id="invite-search-results" style="display: none; position: absolute; background: white; border: 1px solid #ced4da; width: calc(100% - 30px); max-height: 150px; overflow-y: auto; z-index: 1000; margin-top: 5px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); padding: 0;"></ul>
+                </div>
+
                 <div style="text-align: left; margin-bottom: 20px;">
                     <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">📊 Genel Puan Tablosu</h3>
                     <div id="detail-leaderboard" style="background: #ffffff; border: 1px solid #dee2e6; border-radius: 12px; padding: 10px;"></div>
@@ -120,6 +128,11 @@
                     <h3 style="font-size: 16px; color: #2c4d61; margin-bottom: 8px;">⏳ Son Oynanan 5 Oyun</h3>
                     <div id="detail-recent-games" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
+                
+                <div id="premium-match-notice" style="display: none; background: #fff5f5; border: 1px solid #fecdd3; color: #e11d48; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 15px; text-align: left;">
+                    🔒 Bu grupta yeni maç başlatma yetkisi sadece **Premium Üyelere** aittir. Hesap ayarlarından yükseltme yapabilirsiniz.
+                </div>
+
                 <div style="display: flex; gap: 10px;">
                     <button id="detail-back-btn" class="btn-secondary" style="flex: 1;">Gruplara Dön</button>
                     <button id="detail-start-match-btn" class="btn-primary" style="flex: 2;">Yeni Maç Başlat</button>
@@ -129,6 +142,16 @@
             <!-- 4. OYUNCU SEÇİM / KURULUM EKRANI -->
             <div id="setup-screen" style="display: none;">
                 <h2 id="setup-title">Oyuncuları Seç</h2>
+                
+                <!-- YENİ: Tekli mi Eşli mi Seçim Alanı -->
+                <div style="text-align: left; margin-bottom: 15px;">
+                    <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Oyun Modu:</label>
+                    <select id="game-mode" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px; background: white;">
+                        <option value="tekli">Tekli (Bireysel)</option>
+                        <option value="esli">Eşli (2 Takım / Eş)</option>
+                    </select>
+                </div>
+
                 <div id="setup-add-area" class="input-group">
                     <input type="text" id="player-name" placeholder="Oyuncu Adı">
                     <button id="add-player-btn" class="btn-secondary">Ekle</button>
@@ -205,6 +228,6 @@
         <div id="status-message">Firebase bağlantısı bekleniyor...</div>
     </div>
 
-    <script type="module" src="app.js?v=6.0"></script>
+    <script type="module" src="app.js?v=7.5"></script>
 </body>
 </html>

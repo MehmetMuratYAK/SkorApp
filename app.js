@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// FIREBASE YAPILANDIRMASI
+// FIREBASE YAPILANDIRMASI (KENDİ GERÇEK ÇALIŞAN API ANAHTARINI BURAYA YAPIŞTIR)
 const firebaseConfig = {
   apiKey: "AIzaSyA963gL6nAee0JZ1lW5Utbfz4UL9n8VFdg", 
   authDomain: "skorapp-cc771.firebaseapp.com",
@@ -24,6 +24,7 @@ let isLoginMode = true;
 let isQuickStart = false; 
 let currentSelectedGroupId = null; 
 let currentGroupData = null; 
+let allSystemUsers = []; 
 
 let players = []; 
 let rounds = []; 
@@ -63,6 +64,9 @@ const detailRecentGames = document.getElementById("detail-recent-games");
 const detailBackBtn = document.getElementById("detail-back-btn");
 const detailStartMatchBtn = document.getElementById("detail-start-match-btn");
 
+const invitePlayerSearch = document.getElementById("invite-player-search");
+const inviteSearchResults = document.getElementById("invite-search-results");
+
 const setupScreen = document.getElementById("setup-screen");
 const setupTitle = document.getElementById("setup-title");
 const setupAddArea = document.getElementById("setup-add-area");
@@ -72,6 +76,9 @@ const playerNameInput = document.getElementById("player-name");
 const addPlayerBtn = document.getElementById("add-player-btn");
 const gameSettingsArea = document.getElementById("game-settings-area");
 const startMatchBtn = document.getElementById("start-match-btn");
+
+// YENİ ELEMAN: Eşli mi tekli mi seçim kutusu
+const gameModeSelect = document.getElementById("game-mode");
 
 const gameScreen = document.getElementById("game-screen");
 const partyTitle = document.getElementById("party-title");
@@ -100,67 +107,38 @@ const hamburgerBtn = document.getElementById("hamburger-btn");
 const closeMenuBtn = document.getElementById("close-menu-btn");
 const sideMenuPanel = document.getElementById("side-menu-panel");
 
-// HAMBURGER TETİKLEYİCİLERİ
-hamburgerBtn.addEventListener("click", () => {
-    sideMenuPanel.classList.add("open"); // Menüyü kaydırarak açar
-});
-closeMenuBtn.addEventListener("click", () => {
-    sideMenuPanel.classList.remove("open"); // Menüyü kapatır
-});
+hamburgerBtn.addEventListener("click", () => { sideMenuPanel.classList.add("open"); });
+closeMenuBtn.addEventListener("click", () => { sideMenuPanel.classList.remove("open"); });
 
 // --- GİRİŞ / KAYIT EKRANI İŞLEMLERİ ---
 
 toggleAuthBtn.addEventListener("click", () => {
     isLoginMode = !isLoginMode;
     if (isLoginMode) {
-        authTitle.innerText = "Giriş Yap";
-        authPrimaryBtn.innerText = "Giriş Yap";
-        toggleAuthBtn.innerText = "Hesabın yok mu? Kayıt Ol";
-        authUsernameInput.style.display = "none";
-        registerExtraFields.style.display = "none";
+        authTitle.innerText = "Giriş Yap"; authPrimaryBtn.innerText = "Giriş Yap"; toggleAuthBtn.innerText = "Hesabın yok mu? Kayıt Ol"; authUsernameInput.style.display = "none"; registerExtraFields.style.display = "none";
     } else {
-        authTitle.innerText = "Kayıt Ol";
-        authPrimaryBtn.innerText = "Hesap Oluştur";
-        toggleAuthBtn.innerText = "Zaten üye misin? Giriş Yap";
-        authUsernameInput.style.display = "block";
-        registerExtraFields.style.display = "block";
+        authTitle.innerText = "Kayıt Ol"; authPrimaryBtn.innerText = "Hesap Oluştur"; toggleAuthBtn.innerText = "Zaten üye misin? Giriş Yap"; authUsernameInput.style.display = "block"; registerExtraFields.style.display = "block";
     }
 });
 
 authPrimaryBtn.addEventListener("click", async () => {
     const email = authEmailInput.value.trim();
     const password = authPasswordInput.value.trim();
-    
-    if (!email || !password) {
-        alert("Lütfen gerekli alanları doldurun!");
-        return;
-    }
-    
+    if (!email || !password) { alert("Lütfen gerekli alanları doldurun!"); return; }
     try {
         if (isLoginMode) {
-            statusMsg.innerText = "⏳ Oturum açılıyor...";
-            await signInWithEmailAndPassword(auth, email, password);
+            statusMsg.innerText = "⏳ Oturum açılıyor..."; await signInWithEmailAndPassword(auth, email, password);
         } else {
             const username = authUsernameInput.value.trim();
-            if (!username) {
-                alert("Kullanıcı adı şarttır!");
-                return;
-            }
+            if (!username) { alert("Kullanıcı adı şarttır!"); return; }
             statusMsg.innerText = "⏳ Hesap oluşturuluyor...";
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await setDoc(doc(db, "users", userCredential.user.uid), {
-                username: username,
-                email: email,
-                avatar: authAvatarInput.value.trim() || "👤",
-                favGames: authFavGamesInput.value.trim() || "",
-                isAdmin: false
+                username: username, email: email, avatar: authAvatarInput.value.trim() || "👤", favGames: authFavGamesInput.value.trim() || "", isAdmin: false
             });
             alert("Hesabınız oluşturuldu!");
         }
-    } catch (error) {
-        alert("Hata: " + error.message);
-        statusMsg.innerText = "❌ İşlem başarısız.";
-    }
+    } catch (error) { alert("Hata: " + error.message); statusMsg.innerText = "❌ İşlem başarısız."; }
 });
 
 googleAuthBtn.addEventListener("click", async () => {
@@ -169,383 +147,281 @@ googleAuthBtn.addEventListener("click", async () => {
         const result = await signInWithPopup(auth, googleProvider);
         const userDocRef = doc(db, "users", result.user.uid);
         const userDoc = await getDoc(userDocRef);
-        
         if (!userDoc.exists()) {
             await setDoc(userDocRef, {
-                username: result.user.displayName || "Google Kullanıcısı",
-                email: result.user.email,
-                avatar: "😎",
-                favGames: "",
-                isAdmin: false
+                username: result.user.displayName || "Google Kullanıcısı", email: result.user.email, avatar: "😎", favGames: "", isAdmin: false
             });
         }
-    } catch (error) {
-        alert("Google Giriş Hatası: " + error.message);
-        statusMsg.innerText = "❌ Google girişi başarısız.";
-    }
+    } catch (error) { alert("Google Giriş Hatası: " + error.message); statusMsg.innerText = "❌ Google girişi başarısız."; }
 });
 
 forgotPasswordBtn.addEventListener("click", async () => {
-    const email = authEmailInput.value.trim();
-    if (!email) {
-        alert("Lütfen önce e-posta adresinizi yazın!");
-        return;
-    }
-    try {
-        await sendPasswordResetEmail(auth, email);
-        alert("Şifre sıfırlama bağlantısı e-postanıza gönderildi!");
-    } catch (error) {
-        alert("Hata: " + error.message);
-    }
+    const email = authEmailInput.value.trim(); if (!email) { alert("Lütfen önce e-posta adresinizi yazın!"); return; }
+    try { await sendPasswordResetEmail(auth, email); alert("Şifre sıfırlama bağlantısı e-postanıza gönderildi!"); } catch (error) { alert("Hata: " + error.message); }
 });
 
 quickStartBtn.addEventListener("click", () => {
-    isQuickStart = true;
-    currentSelectedGroupId = null;
-    authScreen.style.display = "none";
-    setupScreen.style.display = "block";
-    setupTitle.innerText = "Hızlı Oyun Kurulumu";
-    setupAddArea.style.display = "flex";
-    setupBackBtn.style.display = "block";
-    players = [];
-    updateList();
+    isQuickStart = true; currentSelectedGroupId = null; authScreen.style.display = "none"; setupScreen.style.display = "block"; setupTitle.innerText = "Hızlı Oyun Kurulumu"; setupAddArea.style.display = "flex"; setupBackBtn.style.display = "block"; players = []; 
+    gameModeSelect.value = "tekli"; playerNameInput.placeholder = "Oyuncu Adı"; updateList();
 });
 
-logoutBtn.addEventListener("click", () => {
-    sideMenuPanel.classList.remove("open");
-    signOut(auth);
-});
+logoutBtn.addEventListener("click", () => { sideMenuPanel.classList.remove("open"); signOut(auth); });
 
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        isQuickStart = false;
-        authScreen.style.display = "none";
-        dashboardScreen.style.display = "block";
-        groupDetailScreen.style.display = "none";
-        sideMenuPanel.classList.remove("open");
-        
+        isQuickStart = false; authScreen.style.display = "none"; dashboardScreen.style.display = "block"; groupDetailScreen.style.display = "none"; sideMenuPanel.classList.remove("open");
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
-            currentUserData = userDoc.data();
-            userAvatar.innerText = currentUserData.avatar || "👤";
-            userWelcome.innerText = `Merhaba, ${currentUserData.username}!`;
-            
+            currentUserData = userDoc.data(); userAvatar.innerText = currentUserData.avatar || "👤"; userWelcome.innerText = `Merhaba, ${currentUserData.username}!`;
             if (currentUserData.isAdmin) {
-                userBadge.innerText = "⭐ Premium Üye";
-                userBadge.style.background = "#f1c40f";
-                document.getElementById("upgrade-premium-btn").style.display = "none";
+                userBadge.innerText = "⭐ Premium Üye"; userBadge.style.background = "#f1c40f"; document.getElementById("upgrade-premium-btn").style.display = "none";
             } else {
-                userBadge.innerText = "👤 Standart Üye";
-                userBadge.style.background = "#7f8c8d";
-                document.getElementById("upgrade-premium-btn").style.display = "block";
+                userBadge.innerText = "👤 Standart Üye"; userBadge.style.background = "#7f8c8d"; document.getElementById("upgrade-premium-btn").style.display = "block";
             }
         }
-        statusMsg.innerText = "✅ Oturum Açık";
+        statusMsg.innerText = "✅ Oturum Açık"; 
+        await loadAllSystemUsers(); 
         await fetchGroups(); 
     } else {
-        dashboardScreen.style.display = "none";
-        groupDetailScreen.style.display = "none";
-        setupScreen.style.display = "none";
-        gameScreen.style.display = "none";
-        endScreen.style.display = "none";
-        summaryScreen.style.display = "none";
-        authScreen.style.display = "block";
-        sideMenuPanel.classList.remove("open");
+        dashboardScreen.style.display = "none"; groupDetailScreen.style.display = "none"; setupScreen.style.display = "none"; gameScreen.style.display = "none"; endScreen.style.display = "none"; summaryScreen.style.display = "none"; authScreen.style.display = "block";
     }
 });
+
+async function loadAllSystemUsers() {
+    try {
+        allSystemUsers = [];
+        const snapshot = await getDocs(collection(db, "users"));
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.username && data.email) { allSystemUsers.push({ username: data.username, email: data.email }); }
+        });
+        allSystemUsers.sort((a, b) => a.username.localeCompare(b.username, 'tr'));
+    } catch (e) { console.log(e); }
+}
+
+invitePlayerSearch.addEventListener("input", () => {
+    const query = invitePlayerSearch.value.trim().toLowerCase(); inviteSearchResults.innerHTML = "";
+    if (!query) { inviteSearchResults.style.display = "none"; return; }
+    const filtered = allSystemUsers.filter(u => u.username.toLowerCase().includes(query));
+    if (filtered.length > 0) {
+        filtered.forEach(u => {
+            const li = document.createElement("li"); li.style.padding = "10px 15px"; li.style.cursor = "pointer"; li.style.borderBottom = "1px solid #f1f3f5"; li.style.fontWeight = "500"; li.innerHTML = `👤 ${u.username}`;
+            li.onmouseover = () => li.style.background = "#f8f9fa"; li.onmouseout = () => li.style.background = "white";
+            li.addEventListener("click", async () => { invitePlayerSearch.value = ""; inviteSearchResults.style.display = "none"; await addPlayerToGroup(u.username, u.email); });
+            inviteSearchResults.appendChild(li);
+        });
+        inviteSearchResults.style.display = "block";
+    } else {
+        const li = document.createElement("li"); li.style.padding = "10px 15px"; li.style.color = "#7f8c8d"; li.style.fontStyle = "italic"; li.innerText = "Eşleşen oyuncu bulunamadı..."; inviteSearchResults.appendChild(li); inviteSearchResults.style.display = "block";
+    }
+});
+
+async function addPlayerToGroup(username, email) {
+    if (!currentSelectedGroupId || !currentGroupData) return;
+    let currentEmails = currentGroupData.memberEmails || [];
+    if (currentEmails.includes(email)) { alert(`🚨 ${username} zaten bu gruba ekli!`); return; }
+    statusMsg.innerText = "⏳ Oyuncu ekibe dahil ediliyor..."; currentEmails.push(email);
+    let currentMembers = currentGroupData.members || []; currentMembers.push({ name: username, wins: 0, placements: {} });
+    try {
+        const groupRef = doc(db, "groups", currentSelectedGroupId);
+        await updateDoc(groupRef, { memberEmails: currentEmails, members: currentMembers });
+        alert(`🎉 ${username} başarıyla ekibe dahil edildi!`); await showGroupDetails(currentSelectedGroupId);
+    } catch (error) { alert("Oyuncu ekleme hatası: " + error.message); }
+}
 
 // --- EKİP PANELİ VE LOBİ İŞLEMLERİ ---
 
 createGroupBtn.addEventListener("click", async () => {
-    if (!currentUserData || !currentUserData.isAdmin) {
-        alert("🚨 Yetersiz Yetki! Premium üye olmalısınız.");
-        return;
-    }
-    const groupName = newGroupNameInput.value.trim();
-    if (!groupName) {
-        alert("Lütfen ekibinize bir isim verin!");
-        return;
-    }
+    if (!currentUserData || !currentUserData.isAdmin) { alert("🚨 Yetersiz Yetki! Premium üye olmalısınız."); return; }
+    const groupName = newGroupNameInput.value.trim(); if (!groupName) { alert("Lütfen ekibinize bir isim verin!"); return; }
     try {
+        statusMsg.innerText = "⏳ Ekip oluşturuluyor...";
         await addDoc(collection(db, "groups"), {
-            name: groupName,
-            createdBy: auth.currentUser.uid,
-            members: [],
-            recentGames: []
+            name: groupName, createdBy: auth.currentUser.uid, memberEmails: [auth.currentUser.email], members: [{ name: currentUserData.username, wins: 0, placements: {} }], recentGames: []
         });
-        newGroupNameInput.value = "";
-        await fetchGroups();
-    } catch (error) {
-        alert("Grup kurulamadı: " + error.message);
-    }
+        newGroupNameInput.value = ""; await fetchGroups();
+    } catch (error) { alert("Grup kurulamadı: " + error.message); }
 });
 
 async function fetchGroups() {
-    groupList.innerHTML = "";
-    const querySnapshot = await getDocs(collection(db, "groups"));
-    let count = 0;
-    
+    groupList.innerHTML = ""; const querySnapshot = await getDocs(collection(db, "groups")); let count = 0;
     querySnapshot.forEach((docSnap) => {
-        const group = docSnap.data();
-        count++;
-        const li = document.createElement("li");
-        li.className = "group-item-box";
-        li.innerHTML = `
-            <div class="group-info-text">
-                <strong>🏠 ${group.name}</strong>
-                <div style="font-size:11px; color:#7f8c8d; margin-top:3px;">Toplam Oyuncu: ${group.members ? group.members.length : 0}</div>
-            </div>
-            <button class="group-play-btn" data-id="${docSnap.id}">Gruba Gir</button>
-        `;
-        groupList.appendChild(li);
+        const group = docSnap.data(); const emails = group.memberEmails || [];
+        if (emails.includes(auth.currentUser.email)) {
+            count++; const li = document.createElement("li"); li.className = "group-item-box";
+            li.innerHTML = `<div class="group-info-text"><strong>🏠 ${group.name}</strong><div style="font-size:11px; color:#7f8c8d; margin-top:3px;">Toplam Oyuncu: ${group.members ? group.members.length : 0}</div></div><button class="group-play-btn" data-id="${docSnap.id}">Gruba Gir</button>`;
+            groupList.appendChild(li);
+        }
     });
-    
     document.querySelectorAll(".group-play-btn").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-            currentSelectedGroupId = e.target.getAttribute("data-id");
-            showGroupDetails(currentSelectedGroupId);
-        });
+        btn.addEventListener("click", (e) => { currentSelectedGroupId = e.target.getAttribute("data-id"); showGroupDetails(currentSelectedGroupId); });
     });
-    
-    if (count === 0) {
-        groupList.innerHTML = `<li style="font-style:italic; font-size:13px; color:#7f8c8d; background:none; border:none; text-align:center;">Henüz hiç grup kurulmamış.</li>`;
-    }
+    if (count === 0) { groupList.innerHTML = `<li style="font-style:italic; font-size:13px; color:#7f8c8d; background:none; border:none; text-align:center;">Henüz üye olduğunuz bir grup bulunmuyor.</li>`; }
 }
 
 async function showGroupDetails(groupId) {
-    dashboardScreen.style.display = "none";
-    groupDetailScreen.style.display = "block";
-    statusMsg.innerText = "⏳ Grup kütüğü buluttan indiriliyor...";
+    dashboardScreen.style.display = "none"; groupDetailScreen.style.display = "block";
+    statusMsg.innerText = "⏳ Grup kütüğü buluttan indiriliyor..."; invitePlayerSearch.value = ""; inviteSearchResults.style.display = "none";
 
     const groupDoc = await getDoc(doc(db, "groups", groupId));
     if (groupDoc.exists()) {
-        currentGroupData = groupDoc.data();
-        detailGroupName.innerText = `🏠 ${currentGroupData.name}`;
+        currentGroupData = groupDoc.data(); detailGroupName.innerText = `🏠 ${currentGroupData.name}`;
 
-        detailLeaderboard.innerHTML = "";
-        let members = currentGroupData.members || [];
-        if (members.length === 0) {
-            detailLeaderboard.innerHTML = `<div style="color:#7f8c8d; font-style:italic; font-size:13px; text-align:center; padding:5px;">Henüz bu grupta maç kaydı yok.</div>`;
+        if (currentUserData && currentUserData.isAdmin) {
+            detailStartMatchBtn.style.display = "block"; document.getElementById("premium-match-notice").style.display = "none"; document.getElementById("group-invite-area").style.display = "block"; 
         } else {
-            let sortedMembers = [...members].sort((a, b) => (b.wins || 0) - (a.wins || 0));
-            sortedMembers.forEach((m, idx) => {
-                detailLeaderboard.innerHTML += `
-                    <div class="leaderboard-row">
-                        <span><strong>${idx + 1}.</strong> 👤 ${m.name}</span>
-                        <span style="color:#1c7b64; font-weight:bold;">${m.wins || 0} Galibiyet</span>
-                    </div>`;
-            });
+            detailStartMatchBtn.style.display = "none"; document.getElementById("premium-match-notice").style.display = "block"; document.getElementById("group-invite-area").style.display = "none"; 
         }
 
-        detailRecentGames.innerHTML = "";
-        let recentGames = currentGroupData.recentGames || [];
-        if (recentGames.length === 0) {
-            detailRecentGames.innerHTML = `<div style="color:#7f8c8d; font-style:italic; font-size:13px; text-align:center; padding:5px;">Yakın zamanda oynanmış oyun bulunmuyor.</div>`;
-        } else {
+        detailLeaderboard.innerHTML = ""; let members = currentGroupData.members || [];
+        if (members.length === 0) { detailLeaderboard.innerHTML = `<div style="color:#7f8c8d; font-style:italic; font-size:13px; text-align:center; padding:5px;">Henüz bu grupta maç kaydı yok.</div>`; } 
+        else {
+            let sortedMembers = [...members].sort((a, b) => (b.wins || 0) - (a.wins || 0));
+            sortedMembers.forEach((m, idx) => { detailLeaderboard.innerHTML += `<div class="leaderboard-row"><span><strong>${idx + 1}.</strong> 👤 ${m.name}</span><span style="color:#1c7b64; font-weight:bold;">${m.wins || 0} Galibiyet</span></div>`; });
+        }
+
+        detailRecentGames.innerHTML = ""; let recentGames = currentGroupData.recentGames || [];
+        if (recentGames.length === 0) { detailRecentGames.innerHTML = `<div style="color:#7f8c8d; font-style:italic; font-size:13px; text-align:center; padding:5px;">Yakın zamanda oynanmış oyun bulunmuyor.</div>`; } 
+        else {
             recentGames.forEach(game => {
                 let scoresHTML = game.scores.map(s => `<span>${s.name}: <strong>${s.wins}</strong></span>`).join(' | ');
-                detailRecentGames.innerHTML += `
-                    <div class="recent-game-card">
-                        <div class="recent-game-header">
-                            <span>🎮 ${game.gameName}</span>
-                            <span style="font-size:11px; font-weight:normal;">📅 ${game.date}</span>
-                        </div>
-                        <div class="recent-game-scores">${scoresHTML}</div>
-                    </div>`;
+                detailRecentGames.innerHTML += `<div class="recent-game-card"><div class="recent-game-header"><span>🎮 ${game.gameName}</span> <span style="font-size:11px; font-weight:normal;">📅 ${game.date}</span></div><div class="recent-game-scores">${scoresHTML}</div></div>`;
             });
         }
-        statusMsg.innerText = "✅ Grup verileri yüklendi.";
+        statusMsg.innerText = "✅ Grup verileri senkronize.";
     }
 }
 
-detailBackBtn.addEventListener("click", () => {
-    groupDetailScreen.style.display = "none";
-    dashboardScreen.style.display = "block";
-    fetchGroups();
-});
+detailBackBtn.addEventListener("click", () => { groupDetailScreen.style.display = "none"; dashboardScreen.style.display = "block"; fetchGroups(); });
 
 detailStartMatchBtn.addEventListener("click", () => {
-    groupDetailScreen.style.display = "none";
-    setupScreen.style.display = "block";
-    setupTitle.innerText = "Ekip Maç Kurulumu";
-    setupAddArea.style.display = "flex";
-    setupBackBtn.style.display = "block";
+    groupDetailScreen.style.display = "none"; setupScreen.style.display = "block";
+    setupTitle.innerText = "Ekip Maç Kurulumu"; setupAddArea.style.display = "flex"; setupBackBtn.style.display = "block";
+    
+    // Kurulum ekranı açıldığında modu sıfırla ve grup oyuncularını yükle
+    gameModeSelect.value = "tekli";
+    playerNameInput.placeholder = "Oyuncu Adı";
     
     players = [];
     if (currentGroupData && currentGroupData.members) {
-        currentGroupData.members.forEach(m => {
-            players.push({ name: m.name, wins: m.wins || 0, placements: m.placements || {} });
-        });
+        currentGroupData.members.forEach(m => { players.push({ name: m.name, wins: m.wins || 0, placements: m.placements || {} }); });
+    }
+    updateList();
+});
+
+// YENİ: Oyun Modu (Tekli/Eşli) Değiştiğinde Listeyi Sıfırlayan Dinleyici
+gameModeSelect.addEventListener("change", () => {
+    players = []; // Çakışmaları önlemek için listeyi temizle
+    if (gameModeSelect.value === "esli") {
+        playerNameInput.placeholder = "Takım / Eş Adı (Örn: Ahmet & Can)";
+    } else {
+        playerNameInput.placeholder = "Oyuncu Adı";
     }
     updateList();
 });
 
 setupBackBtn.addEventListener("click", () => {
     setupScreen.style.display = "none";
-    if (isQuickStart) {
-        authScreen.style.display = "block";
-    } else if (currentSelectedGroupId) {
-        groupDetailScreen.style.display = "block";
-    } else {
-        dashboardScreen.style.display = "block";
-    }
+    if (isQuickStart) { authScreen.style.display = "block"; } 
+    else if (currentSelectedGroupId) { groupDetailScreen.style.display = "block"; } 
+    else { dashboardScreen.style.display = "block"; }
 });
 
 dashboardQuickBtn.addEventListener("click", () => {
-    currentSelectedGroupId = null;
-    currentGroupData = null;
-    dashboardScreen.style.display = "none";
-    setupScreen.style.display = "block";
-    setupTitle.innerText = "Hızlı Oyun Kurulumu";
-    setupAddArea.style.display = "flex";
-    setupBackBtn.style.display = "block";
-    players = [];
-    updateList();
+    currentSelectedGroupId = null; currentGroupData = null; dashboardScreen.style.display = "none"; setupScreen.style.display = "block"; setupTitle.innerText = "Hızlı Oyun Kurulumu"; setupAddArea.style.display = "flex"; setupBackBtn.style.display = "block"; players = [];
+    gameModeSelect.value = "tekli"; playerNameInput.placeholder = "Oyuncu Adı"; updateList();
 });
 
 // --- ÇETELE MATEMATİK MOTORU ---
 
 function autoConfigureGameSettings() {
     const game = gameTypeSelect.value;
-    if (game === "pisti") {
-        winConditionSelect.value = "high";
-        targetScoreInput.value = "101";
-    } else if (game === "okey") {
-        winConditionSelect.value = "low";
-        targetScoreInput.value = "";
-    } else if (game === "101") {
-        winConditionSelect.value = "high";
-        targetScoreInput.value = "101";
-    } else if (game === "batak") {
-        winConditionSelect.value = "low";
-        targetScoreInput.value = "11";
-    } else if (game === "king") {
-        winConditionSelect.value = "low";
-        targetScoreInput.value = "";
-    }
+    if (game === "pisti") { winConditionSelect.value = "high"; targetScoreInput.value = "101"; }
+    else if (game === "okey") { winConditionSelect.value = "low"; targetScoreInput.value = ""; }
+    else if (game === "101") { winConditionSelect.value = "high"; targetScoreInput.value = "101"; }
+    else if (game === "batak") { winConditionSelect.value = "low"; targetScoreInput.value = "11"; }
+    else if (game === "king") { winConditionSelect.value = "low"; targetScoreInput.value = ""; }
 }
 
 addPlayerBtn.addEventListener("click", () => {
     const name = playerNameInput.value.trim();
     if (name !== "") {
-        players.push({ name: name, wins: 0, placements: {} });
-        playerNameInput.value = "";
-        updateList();
+        // GÜNCELLEME: Eşli modda 2 takımdan fazlasını engelle
+        if (gameModeSelect.value === "esli" && players.length >= 2) {
+            alert("Eşli modda en fazla 2 takım/eş ekleyebilirsiniz!");
+            return;
+        }
+        players.push({ name: name, wins: 0, placements: {} }); playerNameInput.value = ""; updateList(); 
     }
 });
 
 function updateList() {
     playerList.innerHTML = ""; 
     players.forEach((player, index) => {
-        const li = document.createElement("li");
-        li.innerHTML = `<span>👤 <strong>${player.name}</strong></span> <button class="remove-btn" onclick="removePlayer(${index})">X</button>`;
-        playerList.appendChild(li);
+        const li = document.createElement("li"); li.innerHTML = `<span>👤 <strong>${player.name}</strong></span> <button class="remove-btn" onclick="removePlayer(${index})">X</button>`; playerList.appendChild(li);
     });
     
-    if (players.length >= 2) {
-        startMatchBtn.style.display = "block";
-        gameSettingsArea.style.display = "block";
+    // GÜNCELLEME: Maçı başlatma yetki kuralı moda göre esnetildi
+    const mode = gameModeSelect.value;
+    let canStart = false;
+    
+    if (mode === "esli") {
+        canStart = (players.length === 2); // Eşli ise tam 2 oyuncu/takım olmalı
     } else {
-        startMatchBtn.style.display = "none";
-        gameSettingsArea.style.display = "none";
+        canStart = (players.length >= 2); // Tekli ise en az 2 oyuncu olmalı
     }
+
+    if (canStart) { startMatchBtn.style.display = "block"; gameSettingsArea.style.display = "block"; } 
+    else { startMatchBtn.style.display = "none"; gameSettingsArea.style.display = "none"; }
 }
 
-window.removePlayer = function(index) {
-    players.splice(index, 1);
-    updateList();
-};
-
-startMatchBtn.addEventListener("click", () => {
-    setupScreen.style.display = "none";
-    selectedGameName = gameTypeSelect.options[gameTypeSelect.selectedIndex].text;
-    startParty();
-});
+window.removePlayer = function(index) { players.splice(index, 1); updateList(); };
+startMatchBtn.addEventListener("click", () => { setupScreen.style.display = "none"; selectedGameName = gameTypeSelect.options[gameTypeSelect.selectedIndex].text; startParty(); });
 
 function startParty() {
-    gameScreen.style.display = "block";
-    endScreen.style.display = "none";
-    summaryScreen.style.display = "none";
-    
-    partyTitle.innerText = `${currentParty}. Parti Oynanıyor (${selectedGameName})`;
-    nextPartyBtn.innerText = `${currentParty + 1}. Parti'ye Geç`;
-    
+    gameScreen.style.display = "block"; endScreen.style.display = "none"; summaryScreen.style.display = "none";
+    partyTitle.innerText = `${currentParty}. Parti Oynanıyor (${selectedGameName})`; nextPartyBtn.innerText = `${currentParty + 1}. Parti'ye Geç`;
     let winCondition = winConditionSelect.value;
     let panelHTML = `<div style="font-weight: bold; text-align: center; margin-bottom: 8px; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; color:#2c4d61;">🏆 GENEL SERİ: ${players.map(p => `${p.name}: ${p.wins}`).join(' - ')}</div>`;
     
     if (pastParties.length > 0) {
         panelHTML += `<div style="font-size: 13px; display: flex; flex-direction: column; gap: 4px;">`;
         pastParties.forEach((partyTotals, index) => {
-            let maxScore = Math.max(...partyTotals);
-            let minScore = Math.min(...partyTotals);
-            let winnerValue = winCondition === "high" ? maxScore : minScore;
-            let loserValue = winCondition === "high" ? minScore : maxScore;
-            
+            let maxScore = Math.max(...partyTotals); let minScore = Math.min(...partyTotals);
+            let winnerValue = winCondition === "high" ? maxScore : minScore; let loserValue = winCondition === "high" ? minScore : maxScore;
             let partyRow = `<strong>${index + 1}. Parti:</strong> `;
             let playerStrings = players.map((p, pIndex) => {
-                let score = partyTotals[pIndex];
-                let colorStyle = "color: #333;";
-                if (score === winnerValue) {
-                    colorStyle = "color: #1c7b64; font-weight: bold;";
-                } else if (score === loserValue) {
-                    colorStyle = "color: #e74c3c; font-weight: bold;";
-                }
+                let score = partyTotals[pIndex]; let colorStyle = "color: #333;";
+                if (score === winnerValue) { colorStyle = "color: #1c7b64; font-weight: bold;"; } 
+                else if (score === loserValue) { colorStyle = "color: #e74c3c; font-weight: bold;"; }
                 return `${p.name}: <span style="${colorStyle}">${score}</span>`;
             });
-            partyRow += playerStrings.join(', ');
-            panelHTML += `<div>${partyRow}</div>`;
+            partyRow += playerStrings.join(', '); panelHTML += `<div>${partyRow}</div>`;
         });
         panelHTML += `</div>`;
     }
-    
-    liveSeriesScore.innerHTML = panelHTML;
-    rounds = [ players.map(() => []) ];
-    renderTable();
+    liveSeriesScore.innerHTML = panelHTML; rounds = [ players.map(() => []) ]; renderTable();
 }
 
 function renderTable() {
-    const thead = document.getElementById("score-thead");
-    const tbody = document.getElementById("score-tbody");
-    const tfoot = document.getElementById("score-tfoot");
-
-    thead.innerHTML = `<tr><th>Turlar</th>${players.map(p => `<th>${p.name}</th>`).join('')}</tr>`;
-    tbody.innerHTML = "";
+    const thead = document.getElementById("score-thead"); const tbody = document.getElementById("score-tbody"); const tfoot = document.getElementById("score-tfoot");
+    thead.innerHTML = `<tr><th>Turlar</th>${players.map(p => `<th>${p.name}</th>`).join('')}</tr>`; tbody.innerHTML = "";
     
     rounds.forEach((round, rIndex) => {
-        let tr = document.createElement("tr");
-        let roundNameTd = document.createElement("td");
-        roundNameTd.innerHTML = `<strong>${rIndex + 1}. El</strong>`;
-        tr.appendChild(roundNameTd);
-        
+        let tr = document.createElement("tr"); let roundNameTd = document.createElement("td"); roundNameTd.innerHTML = `<strong>${rIndex + 1}. El</strong>`; tr.appendChild(roundNameTd);
         round.forEach((playerScores, pIndex) => {
-            let td = document.createElement("td");
-            td.className = "cell-score";
-            td.onclick = () => { addScoreToCell(rIndex, pIndex); };
-            
+            let td = document.createElement("td"); td.className = "cell-score"; td.onclick = () => { addScoreToCell(rIndex, pIndex); };
             let html = playerScores.map(score => {
-                let sign = score > 0 ? "+" : "";
-                let colorClass = score >= 0 ? "positive" : "negative";
-                return `<div class="score-val ${colorClass}">${sign}${score}</div>`;
+                let sign = score > 0 ? "+" : ""; let colorClass = score >= 0 ? "positive" : "negative"; return `<div class="score-val ${colorClass}">${sign}${score}</div>`;
             }).join('');
-            
-            if (html === "") {
-                html = `<div class="add-score-hint">Puan Gir</div>`;
-            }
-            td.innerHTML = html;
-            tr.appendChild(td);
+            if (html === "") { html = `<div class="add-score-hint">Puan Gir</div>`; }
+            td.innerHTML = html; tr.appendChild(td);
         });
         tbody.appendChild(tr);
     });
-    
     let totals = players.map(() => 0); 
-    rounds.forEach(round => {
-        round.forEach((playerScores, pIndex) => {
-            playerScores.forEach(score => { totals[pIndex] += score; });
-        });
-    });
-    
-    tfoot.innerHTML = `<tr><th>TOPLAM</th>${totals.map(t => `<th>${t}</th>`).join('')}</tr>`;
-    return totals; 
+    rounds.forEach(round => { round.forEach((playerScores, pIndex) => { playerScores.forEach(score => { totals[pIndex] += score; }); }); });
+    tfoot.innerHTML = `<tr><th>TOPLAM</th>${totals.map(t => `<th>${t}</th>`).join('')}</tr>`; return totals; 
 }
 
 window.addScoreToCell = function(rIndex, pIndex) {
@@ -553,78 +429,45 @@ window.addScoreToCell = function(rIndex, pIndex) {
     if (points !== null && points.trim() !== "") {
         let parsed = parseInt(points);
         if (!isNaN(parsed)) {
-            rounds[rIndex][pIndex].push(parsed);
-            let currentTotals = renderTable(); 
+            rounds[rIndex][pIndex].push(parsed); let currentTotals = renderTable(); 
             let isRoundComplete = rounds[rIndex].every(playerScores => playerScores.length > 0);
-            if (isRoundComplete) {
-                checkAutoEnd(currentTotals);
-            }
-        } else {
-            alert("Lütfen sadece rakam girin!");
-        }
+            if (isRoundComplete) { checkAutoEnd(currentTotals); }
+        } else { alert("Lütfen sadece rakam girin!"); }
     }
 };
 
 document.getElementById("new-round-btn").addEventListener("click", () => {
     let totals = players.map(() => 0); 
-    rounds.forEach(round => {
-        round.forEach((playerScores, pIndex) => {
-            playerScores.forEach(score => { totals[pIndex] += score; });
-        });
-    });
-    if (checkAutoEnd(totals)) {
-        return;
-    }
-    rounds.push(players.map(() => []));
-    renderTable();
+    rounds.forEach(round => { round.forEach((playerScores, pIndex) => { playerScores.forEach(score => { totals[pIndex] += score; }); }); });
+    if (checkAutoEnd(totals)) { return; }
+    rounds.push(players.map(() => [])); renderTable();
 });
 
 function checkAutoEnd(totals) {
     let target = parseInt(targetScoreInput.value);
     if (!isNaN(target)) {
-        let winCondition = winConditionSelect.value;
-        let isGameOver = false;
-        if (winCondition === "high") {
-            isGameOver = totals.some(t => t >= target);
-        } else {
-            isGameOver = totals.some(t => t <= target);
-        }
-        if (isGameOver) {
-            setTimeout(() => {
-                alert(`Hedef puana (${target}) ulaşıldı!`);
-                endParty();
-            }, 300);
-            return true;
-        }
+        let winCondition = winConditionSelect.value; let isGameOver = false;
+        if (winCondition === "high") { isGameOver = totals.some(t => t >= target); } else { isGameOver = totals.some(t => t <= target); }
+        if (isGameOver) { setTimeout(() => { alert(`Hedef puana (${target}) ulaşıldı!`); endParty(); }, 300); return true; }
     }
     return false;
 }
 
-manualEndBtn.addEventListener("click", () => {
-    if (confirm("Bu partiyi bitirip sonuçları görmek istediğinize emin misiniz?")) {
-        endParty();
-    }
-});
+manualEndBtn.addEventListener("click", () => { if (confirm("Bu partiyi bitirip sonuçları görmek istediğinize emin misiniz?")) { endParty(); } });
 
-// --- PROFİL MANTIĞI VE DÜĞMELERİ ---
+// --- PROFİL MANIPÜLASYONLARI ---
 const updateProfileBtn = document.getElementById("update-profile-btn");
 const updatePasswordBtn = document.getElementById("update-password-btn");
 const upgradePremiumBtn = document.getElementById("upgrade-premium-btn");
 const deleteAccountBtn = document.getElementById("delete-account-btn");
 
 updateProfileBtn.addEventListener("click", async () => {
-    const newUsername = document.getElementById("edit-username").value.trim();
-    const newAvatar = document.getElementById("edit-avatar").value; 
+    const newUsername = document.getElementById("edit-username").value.trim(); const newAvatar = document.getElementById("edit-avatar").value; 
     if (!auth.currentUser) return;
     try {
         statusMsg.innerText = "⏳ Profil kütüğü güncelleniyor...";
-        await updateDoc(doc(db, "users", auth.currentUser.uid), {
-            username: newUsername || currentUserData.username,
-            avatar: newAvatar || currentUserData.avatar
-        });
-        alert("Profiliniz başarıyla güncellendi!");
-        sideMenuPanel.classList.remove("open"); // Güncellemeden sonra menüyü kapat
-        location.reload(); 
+        await updateDoc(doc(db, "users", auth.currentUser.uid), { username: newUsername || currentUserData.username, avatar: newAvatar || currentUserData.avatar });
+        alert("Profiliniz başarıyla güncellendi!"); sideMenuPanel.classList.remove("open"); location.reload(); 
     } catch (error) { alert("Güncelleme hatası: " + error.message); }
 });
 
@@ -635,10 +478,8 @@ updatePasswordBtn.addEventListener("click", async () => {
     if (!auth.currentUser) return;
     try {
         statusMsg.innerText = "⏳ Şifre güvenliği senkronize ediliyor...";
-        await updatePassword(auth.currentUser, newPassword);
-        alert("Şifreniz başarıyla değiştirildi!");
-        document.getElementById("edit-password").value = "";
-        sideMenuPanel.classList.remove("open");
+        await updatePassword(auth.currentUser, newPassword); alert("Şifreniz başarıyla değiştirildi!");
+        document.getElementById("edit-password").value = ""; sideMenuPanel.classList.remove("open");
     } catch (error) { alert("Şifre değiştirme hatası: " + error.message); }
 });
 
@@ -647,9 +488,7 @@ upgradePremiumBtn.addEventListener("click", async () => {
     if (confirm("Premium Üye statüsüne yükselmek istiyor musunuz?")) {
         try {
             await updateDoc(doc(db, "users", auth.currentUser.uid), { isAdmin: true });
-            alert("🎉 Başarıyla Premium Üye statüsüne yükseldiniz!");
-            sideMenuPanel.classList.remove("open");
-            location.reload();
+            alert("🎉 Başarıyla Premium Üye statüsüne yükseldiniz!"); sideMenuPanel.classList.remove("open"); location.reload();
         } catch (error) { alert("Abonelik hatası: " + error.message); }
     }
 });
@@ -657,44 +496,23 @@ upgradePremiumBtn.addEventListener("click", async () => {
 deleteAccountBtn.addEventListener("click", async () => {
     if (!confirm("Hesabınızı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!")) return;
     try {
-        const user = auth.currentUser;
-        await deleteDoc(doc(db, "users", user.uid)); 
-        await user.delete(); 
-        alert("Hesabınız silindi.");
-        location.reload(); 
+        const user = auth.currentUser; await deleteDoc(doc(db, "users", user.uid)); await user.delete(); 
+        alert("Hesabınız silindi."); location.reload(); 
     } catch (error) { alert("Hesap silme hatası: " + error.message); }
 });
 
 function endParty() {
-    gameScreen.style.display = "none";
-    endScreen.style.display = "block";
-    
+    gameScreen.style.display = "none"; endScreen.style.display = "block";
     let partyTotalsOrdered = players.map((p, i) => {
-        let totalScore = 0;
-        rounds.forEach(round => {
-            if (round[i]) {
-                round[i].forEach(score => { totalScore += score; });
-            }
-        });
-        return totalScore;
+        let totalScore = 0; rounds.forEach(round => { if (round[i]) { round[i].forEach(score => { totalScore += score; }); } }); return totalScore;
     });
     pastParties.push(partyTotalsOrdered);
-    
-    let totals = players.map((p, i) => {
-        return { originalIndex: i, name: p.name, score: partyTotalsOrdered[i] };
-    });
-    
+    let totals = players.map((p, i) => { return { originalIndex: i, name: p.name, score: partyTotalsOrdered[i] }; });
     let winCondition = winConditionSelect.value;
-    if (winCondition === "high") {
-        totals.sort((a, b) => b.score - a.score);
-    } else {
-        totals.sort((a, b) => a.score - b.score);
-    }
+    if (winCondition === "high") { totals.sort((a, b) => b.score - a.score); } else { totals.sort((a, b) => a.score - b.score); }
     
     totals.forEach((player, index) => {
-        let rank = index + 1;
-        let playerObj = players[player.originalIndex];
-        playerObj.placements[rank] = (playerObj.placements[rank] || 0) + 1;
+        let rank = index + 1; let playerObj = players[player.originalIndex]; playerObj.placements[rank] = (playerObj.placements[rank] || 0) + 1;
     });
     players[totals[0].originalIndex].wins += 1;
     
@@ -705,67 +523,37 @@ function endParty() {
         let colorClass = player.score < 0 ? "negative" : "positive";
         podium.innerHTML += `<div class="podium-item ${rankClass}"><span><span class="rank-badge">${medal}</span> ${player.name}</span><span class="score-val ${colorClass}">${player.score}</span></div>`;
     });
-    
     seriesScoreList.innerHTML = "";
-    players.forEach(p => {
-        seriesScoreList.innerHTML += `<div style="background: #ffffff; padding: 5px 15px; border-radius: 8px; font-weight: bold; border: 1px solid #bdc3c7;">${p.name}: <span style="color: #2980b9; font-size: 18px;">${p.wins}</span></div>`;
-    });
-    
-    if (typeof confetti === "function") {
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-    }
+    players.forEach(p => { seriesScoreList.innerHTML += `<div style="background: #ffffff; padding: 5px 15px; border-radius: 8px; font-weight: bold; border: 1px solid #bdc3c7;">${p.name}: <span style="color: #2980b9; font-size: 18px;">${p.wins}</span></div>`; });
+    if (typeof confetti === "function") { confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); }
 }
 
-nextPartyBtn.addEventListener("click", () => {
-    currentParty += 1;
-    startParty();
-});
+nextPartyBtn.addEventListener("click", () => { currentParty += 1; startParty(); });
 
 endCompletelyBtn.addEventListener("click", async () => {
     if (confirm("Turnuvayı bitirip istatistikleri rapora işlemek istiyor musunuz?")) {
-        endScreen.style.display = "none";
-        summaryScreen.style.display = "block";
-        
-        const statType = statTypeSelect.value;
-        let playedPartyCount = pastParties.length;
+        endScreen.style.display = "none"; summaryScreen.style.display = "block";
+        const statType = statTypeSelect.value; let playedPartyCount = pastParties.length;
         let totalGamesCount = statType === "per-party" ? playedPartyCount : (playedPartyCount > 0 ? 1 : 0);
         gameCountInfo.innerText = `🎮 Toplam Değerlendirilen ${selectedGameName} Oyunu Sayısı: ${totalGamesCount}`;
         
         if (currentSelectedGroupId && currentGroupData) {
-            statusMsg.innerText = "⏳ Maç özeti ve son oynanan oyunlar buluta yazılıyor...";
+            statusMsg.innerText = "⏳ Maç özeti buluta yazılıyor...";
             try {
                 const groupRef = doc(db, "groups", currentSelectedGroupId);
-                
-                let matchSummary = {
-                    gameName: selectedGameName,
-                    date: new Date().toLocaleDateString('tr-TR'),
-                    scores: players.map(p => ({ name: p.name, wins: p.wins }))
-                };
-
+                let matchSummary = { gameName: selectedGameName, date: new Date().toLocaleDateString('tr-TR'), scores: players.map(p => ({ name: p.name, wins: p.wins })) };
                 let updatedRecentGames = currentGroupData.recentGames || [];
-                updatedRecentGames.unshift(matchSummary);
-                if (updatedRecentGames.length > 5) {
-                    updatedRecentGames = updatedRecentGames.slice(0, 5);
-                }
-
-                await updateDoc(groupRef, {
-                    members: players,
-                    recentGames: updatedRecentGames
-                });
+                updatedRecentGames.unshift(matchSummary); if (updatedRecentGames.length > 5) { updatedRecentGames = updatedRecentGames.slice(0, 5); }
+                await updateDoc(groupRef, { members: players, recentGames: updatedRecentGames });
                 statusMsg.innerText = "✅ İstatistikler ve Son 5 Oyun buluta işlendi!";
-            } catch (err) {
-                console.log("Bulut kayıt hatası: ", err);
-            }
+            } catch (err) { console.log("Bulut kayıt hatası: ", err); }
         }
 
         summaryList.innerHTML = "";
         players.forEach(p => {
             let placementBadges = [];
             for (let i = 1; i <= players.length; i++) {
-                let count = p.placements[i] || 0;
-                if (count > 0) {
-                    placementBadges.push(`<span style="background: #eaf2f8; color: #2980b9; padding: 4px 10px; border-radius: 6px; border: 1px solid #d4e6f1; font-size: 13px; font-weight: bold;">${i}.lik: ${count} Kez</span>`);
-                }
+                let count = p.placements[i] || 0; if (count > 0) { placementBadges.push(`<span style="background: #eaf2f8; color: #2980b9; padding: 4px 10px; border-radius: 6px; border: 1px solid #d4e6f1; font-size: 13px; font-weight: bold;">${i}.lik: ${count} Kez</span>`); }
             }
             summaryList.innerHTML += `<div style="background: #ffffff; border: 1px solid #dee2e6; padding: 15px; border-radius: 12px; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.02);"><strong style="color: #1c7b64; font-size: 16px; display: block; margin-bottom: 8px;">👤 ${p.name}</strong><div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">${placementBadges.join('')}</div><div style="font-size: 13px; color: #7f8c8d; font-weight: 500;">🏆 Bu Turnuvadaki Toplam Parti Galibiyeti: ${p.wins}</div></div>`;
         });
@@ -773,15 +561,6 @@ endCompletelyBtn.addEventListener("click", async () => {
 });
 
 finalRestartBtn.addEventListener("click", () => {
-    currentParty = 1;
-    pastParties = [];
-    rounds = [];
-    players = [];
-    if (auth.currentUser) {
-        summaryScreen.style.display = "none";
-        dashboardScreen.style.display = "block";
-        fetchGroups();
-    } else {
-        location.reload();
-    }
+    currentParty = 1; pastParties = []; rounds = []; players = [];
+    if (auth.currentUser) { summaryScreen.style.display = "none"; dashboardScreen.style.display = "block"; fetchGroups(); } else { location.reload(); }
 });
