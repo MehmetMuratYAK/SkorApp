@@ -4,7 +4,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 
 // FIREBASE YAPILANDIRMASI
 const firebaseConfig = {
-  apiKey: "AIzaSyA963gL6nAee0JZ1lW5Utbfz4UL9n8VFdg", 
+  apiKey: "AIzaSyA963gL6nAee0JZ11W5Utbfz4UL9n8VFdg", 
   authDomain: "skorapp-cc771.firebaseapp.com",
   projectId: "skorapp-cc771",
   storageBucket: "skorapp-cc771.firebasestorage.app",
@@ -31,8 +31,7 @@ let rounds = [];
 let pastParties = []; 
 let currentParty = 1;
 let selectedGameName = "";
-// Turnuva bitiminde tüm el detaylarını veri tabanına gömmek için bu state dizisini tutuyoruz
-let historyPartyRounds = []; 
+let historyPartyRounds = []; // Partilerin anlık el detaylarını hafızada tutan kritik dizi
 
 // ELEMAN SEÇİCİLER (DOM)
 const authScreen = document.getElementById("auth-screen");
@@ -103,19 +102,16 @@ const finalRestartBtn = document.getElementById("final-restart-btn");
 
 const statusMsg = document.getElementById("status-message");
 
-// MATRIX TABLO VE ARŞİV FİLTRE DÜĞMELERİ
 const leaderboardGameSelect = document.getElementById("leaderboard-game-select");
 const leaderboardModeSelect = document.getElementById("leaderboard-mode-select");
 const archiveFilterGame = document.getElementById("archive-filter-game");
 const archiveFilterMode = document.getElementById("archive-filter-mode");
 
-// MODAL DÜĞMELERİ
 const matchDetailsModal = document.getElementById("match-details-modal");
 const modalMatchTitle = document.getElementById("modal-match-title");
 const modalMatchContent = document.getElementById("modal-match-content");
 const modalCloseBtn = document.getElementById("modal-close-btn");
 
-// HAMBURGER ELEMANLARI
 const hamburgerBtn = document.getElementById("hamburger-btn");
 const closeMenuBtn = document.getElementById("close-menu-btn");
 const sideMenuPanel = document.getElementById("side-menu-panel");
@@ -287,14 +283,13 @@ async function showGroupDetails(groupId) {
             detailStartMatchBtn.style.display = "none"; document.getElementById("premium-match-notice").style.display = "block"; document.getElementById("group-invite-area").style.display = "none"; 
         }
 
-        // Dinamik Matris Puan Tablosunu ve Arşivi İlk Kez Hesaplayıp Çizelim
         calculateAndRenderLeaderboard();
         renderFilteredArchive();
         statusMsg.innerText = "✅ Grup verileri senkronize.";
     }
 }
 
-// --- DİNAMİK PUAN TABLOSU VE MATRIX MOTORU (GÖRSELLERDEKİ GİBİ SIFIRDAN ÇİZER) ---
+// 🛠️ DÜZELTME: display:flex çakışmasını önlemek için class="leaderboard-row" satırları tablodan temizlendi, saf tablo düzenine geçildi
 function calculateAndRenderLeaderboard() {
     const targetGame = leaderboardGameSelect.value;
     const targetMode = leaderboardModeSelect.value;
@@ -303,17 +298,14 @@ function calculateAndRenderLeaderboard() {
 
     tbody.innerHTML = "";
     
-    // Gruptaki tüm oyuncuları baz alan geçici bir istatistik haritası açalım
     let statsMap = {};
     currentGroupData.members.forEach(m => {
         statsMap[m.name] = { name: m.name, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: false };
     });
 
-    // Son oynanan tüm maçları tarayarak seçilen oyun/mod filtresine uyan verileri süzüyoruz
     const matchHistory = currentGroupData.recentGames || [];
     matchHistory.forEach(game => {
         if (game.gameType === targetGame && game.gameMode === targetMode) {
-            // Eşli Mod Matrisi (Galibiyet / Mağlubiyet)
             if (targetMode === "esli") {
                 if (game.partyScores && game.partyScores.length > 0) {
                     let sortedParty = [...game.partyScores].sort((a,b) => b.wins - a.wins);
@@ -329,7 +321,6 @@ function calculateAndRenderLeaderboard() {
                     });
                 }
             } 
-            // Tekli Mod Matrisi (1.lik, 2.lik, 3.lük, 4.lük Sıralaması)
             else {
                 if (game.partyScores && game.partyScores.length > 0) {
                     let sortedParty = [...game.partyScores].sort((a,b) => b.wins - a.wins);
@@ -349,39 +340,36 @@ function calculateAndRenderLeaderboard() {
 
     let statsArray = Object.values(statsMap);
 
-    // KURAL: Eğer TEKLİ ise sıralama önce en çok 1. olana, eşitse 2.ye, o da eşitse 3.ye göre yapılır!
     if (targetMode === "tekli") {
-        thead.innerHTML = `<tr><th style="padding:10px;">Oyuncu</th><th>1</th><th>2</th><th>3</th><th>4</th></tr>`;
+        thead.innerHTML = `<tr><th style="padding:12px; text-align:left;">Oyuncu</th><th style="width:60px; text-align:center;">1</th><th style="width:60px; text-align:center;">2</th><th style="width:60px; text-align:center;">3</th><th style="width:60px; text-align:center;">4</th></tr>`;
         statsArray.sort((a, b) => b.p1 - a.p1 || b.p2 - a.p2 || b.p3 - a.p3 || b.p4 - a.p4);
         
         statsArray.forEach(row => {
             tbody.innerHTML += `
-                <tr class="leaderboard-row" style="background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
-                    <td style="padding:10px; font-weight:bold;">👤 ${row.name}</td>
-                    <td style="color:#1c7b64; font-weight:bold;">${row.p1}</td>
-                    <td>${row.p2}</td>
-                    <td>${row.p3}</td>
-                    <td style="color:#e74c3c;">${row.p4}</td>
+                <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
+                    <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
+                    <td style="text-align:center; color:#1c7b64; font-weight:bold;">${row.p1}</td>
+                    <td style="text-align:center;">${row.p2}</td>
+                    <td style="text-align:center;">${row.p3}</td>
+                    <td style="text-align:center; color:#e74c3c;">${row.p4}</td>
                 </tr>`;
         });
     } 
-    // KURAL: Eğer EŞLİ ise sıralama galibiyete göre yapılır
     else {
-        thead.innerHTML = `<tr><th style="padding:10px;">Oyuncu</th><th style="color:#2ecc71;">Galibiyet</th><th style="color:#e74c3c;">Mağlubiyet</th></tr>`;
+        thead.innerHTML = `<tr><th style="padding:12px; text-align:left;">Oyuncu</th><th style="width:100px; text-align:center; color:#1c7b64;">Galibiyet</th><th style="width:100px; text-align:center; color:#e74c3c;">Mağlubiyet</th></tr>`;
         statsArray.sort((a, b) => b.wins - a.wins || a.losses - b.losses);
 
         statsArray.forEach(row => {
             tbody.innerHTML += `
-                <tr class="leaderboard-row" style="background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
-                    <td style="padding:10px; font-weight:bold;">👤 ${row.name}</td>
-                    <td style="color:#1c7b64; font-weight:bold;">${row.wins} Maç</td>
-                    <td style="color:#e74c3c; font-weight:bold;">${row.losses} Maç</td>
+                <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
+                    <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
+                    <td style="text-align:center; color:#1c7b64; font-weight:bold;">${row.wins} Maç</td>
+                    <td style="text-align:center; color:#e74c3c; font-weight:bold;">${row.losses} Maç</td>
                 </tr>`;
         });
     }
 }
 
-// --- AKILLI ARŞİV FİLTRELEME VE MAÇ DETAY GÖSTERİM MOTORU ---
 function renderFilteredArchive() {
     const gameFilter = archiveFilterGame.value;
     const modeFilter = archiveFilterMode.value;
@@ -391,11 +379,10 @@ function renderFilteredArchive() {
     const matchHistory = currentGroupData.recentGames || [];
     let count = 0;
 
-    matchHistory.forEach((game, globalIdx) => {
+    matchHistory.forEach((game) => {
         const matchGameType = game.gameType || "okey";
         const matchGameMode = game.gameMode || "tekli";
 
-        // Filtre süzgeç kontrolleri
         if (gameFilter !== "all" && matchGameType !== gameFilter) return;
         if (modeFilter !== "all" && matchGameMode !== modeFilter) return;
 
@@ -410,35 +397,29 @@ function renderFilteredArchive() {
         card.innerHTML = `
             <div class="recent-game-header">
                 <span>🎮 ${game.gameName} (${matchGameMode === 'esli' ? 'Eşli' : 'Tekli'})</span>
-                <span style="font-size:11px; font-weight:normal; color:#7f8c8d;">📅 ${game.date || 'Tarih yok'} 🔍 Tıkla Detay Gör</span>
+                <span style="font-size:11px; font-weight:normal; color:#7f8c8d;">📅 ${game.date || '-'} 🔍 Tıkla Detay Gör</span>
             </div>
             <div class="recent-game-scores">${scoresHTML}</div>
         `;
 
-        // TIKLANDIĞINDA TÜM EL PUANLARINI AYRI BİR MODAL PENCEREDE ÇİZEN DİNLEYİCİ
-        card.addEventListener("click", () => {
-            showExactHandDetailsModal(game);
-        });
-
+        card.addEventListener("click", () => { showExactHandDetailsModal(game); });
         container.appendChild(card);
     });
 
     if (count === 0) {
-        container.innerHTML = `<div style="color:#7f8c8d; font-style:italic; font-size:13px; text-align:center; padding:10px;">Filtre kriterlerine uyan geçmiş oyun kaydı bulunamadı.</div>`;
+        container.innerHTML = `<div style="color:#7f8c8d; font-style:italic; font-size:13px; text-align:center; padding:10px;">Geçmiş oyun kaydı bulunamadı.</div>`;
     }
 }
 
-// GÖRSELDEKİ GİBİ GEÇMİŞ MAÇIN TÜM EL/TUR PUANLARINI DETAYLICA ÇİZEN MODAL AKIŞI
 function showExactHandDetailsModal(gameData) {
     modalMatchTitle.innerText = `📊 ${gameData.gameName} - El Skor Geçmişi`;
     let modalHTML = `<div style="font-size:13px; color:#7f8c8d; margin-bottom:10px;"><strong>Tarih:</strong> ${gameData.date || '-'} | <strong>Mod:</strong> ${gameData.gameMode === 'esli' ? 'Eşli (2 Takım)' : 'Tekli'}</div>`;
     
     const gameParties = gameData.partyRoundDetails || [];
     
-    if (gameParties.length === 0) {
-        modalHTML += `<div style="text-align:center; font-style:italic; color:#7f8c8d; padding:15px;">Bu maça ait el detay puan verisi bulunmuyor.</div>`;
+    if (!gameParties || gameParties.length === 0) {
+        modalHTML += `<div style="text-align:center; font-style:italic; color:#7f8c8d; padding:15px;">Bu maça ait el detay puan verisi bulunmuyor.<br><small style="font-size:11px; color:#a1a1a1;">(Sadece v9.0 güncellemesi sonrası tamamlanan yeni maçların el detayları saklanır)</small></div>`;
     } else {
-        // Her bir partiyi ayrı birer tablo halinde modal içerisine döküyoruz
         gameParties.forEach((partyObj, pIdx) => {
             modalHTML += `<div style="margin-top:15px; border-top:2px solid #32546d; padding-top:10px;">
                             <strong style="color:#32546d; display:block; margin-bottom:5px;">📌 ${pIdx + 1}. Parti Puan Çetelesi</strong>`;
@@ -452,7 +433,6 @@ function showExactHandDetailsModal(gameData) {
             });
             modalHTML += `</tr></thead><tbody>`;
 
-            // Turları/Elleri satır satır döküyoruz
             if (partyObj.handRounds && partyObj.handRounds.length > 0) {
                 partyObj.handRounds.forEach((hand, hIdx) => {
                     modalHTML += `<tr><td style="padding:6px; border:1px solid #dee2e6; font-weight:bold;">${hIdx + 1}. El</td>`;
@@ -466,7 +446,6 @@ function showExactHandDetailsModal(gameData) {
                 });
             }
 
-            // En alt satıra o partinin toplam skorlarını basalım
             modalHTML += `<tr style="background:#fffdf5; font-weight:bold; border-top:2px solid #ced4da;">
                             <td style="padding:6px; border:1px solid #dee2e6; color:#2c3e50;">TOPLAM</td>`;
             partyObj.finalTotals.forEach(tScore => {
@@ -481,7 +460,6 @@ function showExactHandDetailsModal(gameData) {
     matchDetailsModal.style.display = "flex";
 }
 
-// Tetikleyici Dinleyicilerini Seçim Kutularına Bağlayalım
 leaderboardGameSelect.addEventListener("change", calculateAndRenderLeaderboard);
 leaderboardModeSelect.addEventListener("change", calculateAndRenderLeaderboard);
 archiveFilterGame.addEventListener("change", renderFilteredArchive);
@@ -489,15 +467,13 @@ archiveFilterMode.addEventListener("change", renderFilteredArchive);
 
 detailBackBtn.addEventListener("click", () => { groupDetailScreen.style.display = "none"; dashboardScreen.style.display = "block"; fetchGroups(); });
 
-// --- YENI MAÇ SEÇİM ALANI VE DINAMIK KOMPONENT MOTORU ---
-
 detailStartMatchBtn.addEventListener("click", () => {
     groupDetailScreen.style.display = "none"; setupScreen.style.display = "block";
     setupTitle.innerText = "Ekip Maç Kurulumu"; setupAddArea.style.display = "flex"; setupBackBtn.style.display = "block";
     
     gameModeSelect.value = "tekli";
     players = []; 
-    historyPartyRounds = []; // Yeni maç için el geçmişi state'ini sıfırla
+    historyPartyRounds = []; // Maç kurulurken detay hafızayı sıfırlıyoruz
     
     updatePlayerInputComponent();
     updateList();
@@ -661,7 +637,7 @@ function endParty() {
         let totalScore = 0; rounds.forEach(round => { if (round[i]) { round[i].forEach(score => { totalScore += score; }); } }); return totalScore;
     });
 
-    // Akıllı Arşiv: Oynanan bu partinin tur puan detaylarını klonlayıp kalıcı hafızaya alıyoruz
+    // 🛠️ DÜZELTME: Partinin içindeki el puan listesini derinlemesine klonlayarak diziye ekliyoruz
     historyPartyRounds.push({
         playerNames: players.map(p => p.name),
         handRounds: JSON.parse(JSON.stringify(rounds)), 
@@ -704,14 +680,14 @@ endCompletelyBtn.addEventListener("click", async () => {
             try {
                 const groupRef = doc(db, "groups", currentSelectedGroupId);
                 
-                // KALICI ARŞİV DETAY OBJESİ: Tüm el detaylarını ve modu buluta tek seferde basar
+                // 🛠️ DÜZELTME: Eksik olan gameType, gameMode ve partyRoundDetails alanları matchSummary nesnesine eksiksiz dahil edildi
                 let matchSummary = { 
                     gameName: selectedGameName, 
                     gameType: gameTypeSelect.value,
                     gameMode: gameModeSelect.value,
                     date: new Date().toLocaleDateString('tr-TR'), 
                     partyScores: players.map(p => ({ name: p.name, wins: p.wins })),
-                    partyRoundDetails: historyPartyRounds // Tüm el skor matrisi
+                    partyRoundDetails: historyPartyRounds 
                 };
 
                 let updatedRecentGames = currentGroupData.recentGames || [];
