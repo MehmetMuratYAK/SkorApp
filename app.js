@@ -460,11 +460,9 @@ function calculateAndRenderLeaderboard() {
                 }
             } 
             else {
-                // --- TEKLİ MOD İÇİN COĞRAFİ VE ADİL SKOR HESAPLAMA MOTORU ---
                 if (game.partyScores && game.partyScores.length > 0) {
                     let matchPlayers = [];
                     
-                    // Maçın içindeki tüm partilerin puanlarını toplayalım
                     if (game.partyRoundDetails && game.partyRoundDetails.length > 0) {
                         let summary = {};
                         game.partyRoundDetails.forEach(party => {
@@ -482,24 +480,21 @@ function calculateAndRenderLeaderboard() {
                         matchPlayers = game.partyScores.map(ps => ({ name: ps.name, score: 0, wins: ps.wins || 0 }));
                     }
 
-                    // Oyunun türüne göre kazanma mantığını çöz (Okey/Batak = Düşük puan, Pişti/101 = Yüksek puan)
-                    let isLowWins = (game.gameType === "okey" || game.gameType === "batak");
-                    const winner = matchPlayers.reduce((max, p) => p.wins > max.wins ? p : max, matchPlayers[0]);
-                    if (winner) {
+                    // 🎯 Oyun türüne veya buluttaki geriye düşme (isCountdown) etiketine göre kazanma yönünü anla
+                    let isLowWins = (game.gameType === "okey" || game.gameType === "batak" || game.isCountdown === true);
+                    
+                    // Geçmiş eski maçlarda etiket yoksa eksi puana bakarak otomatik anla (Emniyet Kilidi)
+                    if (!game.hasOwnProperty('isCountdown') && matchPlayers.length > 0) {
                         const scores = matchPlayers.map(p => p.score);
-                        const minScore = Math.min(...scores);
-                        const maxScore = Math.max(...scores);
-                        if (winner.score === minScore && minScore !== maxScore) isLowWins = true;
-                        if (winner.score === maxScore && minScore !== maxScore) isLowWins = false;
+                        if (Math.min(...scores) < 0) isLowWins = true;
                     }
 
-                    // Oyuncuları önce Galibiyete, eşitlik durumunda ise topladıkları ceza/skor durumuna göre adilce diziyoruz
+                    // Oyuncuları önce Galibiyete, eşitlik durumunda ise puan durumuna göre adilce diziyoruz
                     matchPlayers.sort((a, b) => {
                         if (b.wins !== a.wins) return b.wins - a.wins;
                         return isLowWins ? (a.score - b.score) : (b.score - a.score);
                     });
 
-                    // Gerçekleşen sıralamaya göre Genel Puan Tablosundaki (1, 2, 3, 4) hanelerine işletiyoruz
                     matchPlayers.forEach((pScore, index) => {
                         let singleName = pScore.name;
                         if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true };
@@ -1060,22 +1055,20 @@ function checkAutoEnd(totals) {
 manualEndBtn.addEventListener("click", () => { if (confirm("Bu partiyi bitirip sonuçları görmek istediğinize emin misiniz?")) { endParty(); } });
 
 function endParty() {
-    gameScreen.style.display = "none"; endScreen.style.display = "block";
+    gameScreen.style.display = "none"; 
+    endScreen.style.display = "block";
     
-    // YENİ: Başlangıç puanı girilmiş mi kontrol et ve bitiş matematiğini buna göre eşitle
     let baseScore = parseInt(startScoreInput.value) || 0;
     
     let partyTotalsOrdered = players.map((p, i) => {
-        // Eğer başlangıç puanı varsa hesaba o sayıdan başla, yoksa 0'dan başla
         let totalScore = baseScore; 
-        
         rounds.forEach(round => { 
             if (round[i]) { 
                 round[i].forEach(score => { 
                     if (baseScore > 0) {
-                        totalScore -= score; // Eksiltmeli oyun modu ise düş
+                        totalScore -= score; 
                     } else {
-                        totalScore += score; // Normal oyun modu ise topla
+                        totalScore += score; 
                     }
                 }); 
             } 
@@ -1083,26 +1076,40 @@ function endParty() {
         return totalScore;
     });
 
-    let formattedRounds = rounds.map(round => {
-        let roundObj = {};
-        players.forEach((p, pIdx) => { roundObj[p.name] = round[pIdx] || []; });
-        return roundObj;
-    });
-
     historyPartyRounds.push({
         playerNames: players.map(p => p.name),
-        handRounds: formattedRounds, 
+        handRounds: rounds.map(round => {
+            let roundObj = {};
+            players.forEach((p, pIdx) => { roundObj[p.name] = round[pIdx] || []; });
+            return roundObj;
+        }), 
         finalTotals: partyTotalsOrdered
     });
 
     pastParties.push(partyTotalsOrdered);
+    
     let totals = players.map((p, i) => { return { originalIndex: i, name: p.name, score: partyTotalsOrdered[i] }; });
     let winCondition = winConditionSelect.value;
-    if (winCondition === "high") { totals.sort((a, b) => b.score - a.score); } else { totals.sort((a, b) => a.score - b.score); }
     
+    // 🎯 KRİTİK DÜZELTME: Geriye düşmeli oyunda (baseScore > 0) HER ZAMAN küçük/eksi olan kazanır!
+    if (baseScore > 0) {
+        totals.sort((a, b) => a.score - b.score); // Küçükten büyüğe dizer (-10, sonra 30 gelir)
+    } else {
+        if (winCondition === "high") { 
+            totals.sort((a, b) => b.score - a.score); 
+        } else { 
+            totals.sort((a, b) => a.score - b.score); 
+        }
+    }
+    
+    // Sıralama tam olarak düzeldikten sonra dereceleri işletiyoruz (Hem Tekli hem Eşli için ortak)
     totals.forEach((player, index) => {
-        let rank = index + 1; let playerObj = players[player.originalIndex]; playerObj.placements[rank] = (playerObj.placements[rank] || 0) + 1;
+        let rank = index + 1; 
+        let playerObj = players[player.originalIndex]; 
+        playerObj.placements[rank] = (playerObj.placements[rank] || 0) + 1;
     });
+    
+    // Gerçek kazananı (sıralamadaki ilk kişiyi) tam olarak birinci yapıyoruz ve wins ekliyoruz!
     players[totals[0].originalIndex].wins += 1;
     
     podium.innerHTML = "";
@@ -1112,6 +1119,7 @@ function endParty() {
         let colorClass = player.score < 0 ? "negative" : "positive";
         podium.innerHTML += `<div class="podium-item ${rankClass}"><span><span class="rank-badge">${medal}</span> ${player.name}</span><span class="score-val ${colorClass}">${player.score}</span></div>`;
     });
+    
     seriesScoreList.innerHTML = "";
     players.forEach(p => { seriesScoreList.innerHTML += `<div style="background: #ffffff; padding: 5px 15px; border-radius: 8px; font-weight: bold; border: 1px solid #bdc3c7;">${p.name}: <span style="color: #2980b9; font-size: 18px;">${p.wins}</span></div>`; });
     if (typeof confetti === "function") { confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); }
@@ -1146,14 +1154,17 @@ endCompletelyBtn.addEventListener("click", async () => {
                 if (freshSnap.exists()) {
                     const freshGroupData = freshSnap.data();
                     
-                    let matchSummary = { 
-                        gameName: selectedGameName, 
-                        gameType: gameTypeSelect.value,
-                        gameMode: gameModeSelect.value,
-                        date: new Date().toLocaleDateString('tr-TR'), 
-                        partyScores: players.map(p => ({ name: p.name, wins: p.wins })),
-                        partyRoundDetails: historyPartyRounds 
-                    };
+                   let baseScore = parseInt(startScoreInput.value) || 0;
+
+                let matchSummary = { 
+                    gameName: selectedGameName, 
+                    gameType: gameTypeSelect.value,
+                    gameMode: gameModeSelect.value,
+                    date: new Date().toLocaleDateString('tr-TR'), 
+                    isCountdown: baseScore > 0, // 🎯 Oyunun geriye düşmeli olduğunu kalıcı arşive işliyoruz!
+                    partyScores: players.map(p => ({ name: p.name, wins: p.wins })),
+                    partyRoundDetails: historyPartyRounds 
+                };
                     
                     // Eski oyunları kaybetmeden listenin başına ekle
                     let updatedRecentGames = freshGroupData.recentGames || [];
