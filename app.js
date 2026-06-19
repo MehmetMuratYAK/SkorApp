@@ -386,12 +386,12 @@ async function showGroupDetails(groupId) {
     archiveFilterStartDate.value = "";
     archiveFilterEndDate.value = "";
 
-    // Eğer arkada açık kalmış eski bir canlı dinleyici varsa çakışmaması için kapatıyoruz
+    // Eğer arkada açık kalmış eski bir canlı dinleyici varsa kapatıyoruz
     if (activeGroupListener) activeGroupListener();
 
     statusMsg.innerText = "⏳ Canlı grup verileri eşitleniyor...";
 
-    // MUCİZE KOD: Gruba canlı yayın hattı açıyoruz. Bulutta ne değişirse anında bu fonksiyon tetiklenir!
+    // Gruba canlı yayın hattı açıyoruz.
     activeGroupListener = onSnapshot(doc(db, "groups", groupId), (groupDoc) => {
         if (groupDoc.exists()) {
             currentGroupData = groupDoc.data(); 
@@ -407,18 +407,22 @@ async function showGroupDetails(groupId) {
                 document.getElementById("group-invite-area").style.display = "none"; 
             }
 
-            // Canlı Maç Var mı Kontrolü (Önceki adımda eklemiştik)
-            if (currentGroupData.activeMatch) {
-                liveMatchJoinBtn.innerText = `🔴 CANLI ${currentGroupData.activeMatch.selectedGameName.toUpperCase()} MAÇI VAR! (Katıl / İzle)`;
-                liveMatchJoinBtn.style.display = "block";
-            } else {
-                liveMatchJoinBtn.style.display = "none";
+            // 🔒 EMNİYET KİLİDİ: Canlı maç butonu html içinde var mı kontrol et, yoksa sistemi kilitlemesin!
+            const liveBtn = document.getElementById("live-match-join-btn");
+            if (liveBtn) {
+                if (currentGroupData.activeMatch) {
+                    liveBtn.innerText = `🔴 CANLI ${currentGroupData.activeMatch.selectedGameName.toUpperCase()} MAÇI VAR! (Katıl / İzle)`;
+                    liveBtn.style.display = "block";
+                } else {
+                    liveBtn.style.display = "none";
+                }
             }
 
-            // Gruptaki herhangi bir kullanıcı maç bitirdiğinde burası otomatik çalışır 
-            // ve tabloyu ile arşivi herkesin ekranında aynı anda günceller!
+            // Tabloları ve geçmiş maçları ne olursa olsun güvenle çizdiriyoruz
             calculateAndRenderLeaderboard();
             renderFilteredArchive();
+            
+            // Başarılı olduğunu doğrulamak için alt yazıyı güncelleyelim
             statusMsg.innerText = "✅ Veriler anlık olarak güncel.";
         }
     });
