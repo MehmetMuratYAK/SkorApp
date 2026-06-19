@@ -428,7 +428,7 @@ function calculateAndRenderLeaderboard() {
 
     const matchHistory = currentGroupData.recentGames || [];
     matchHistory.forEach(game => {
-        if (game.gameType === targetGame && game.gameType === targetGame && game.gameMode === targetMode) {
+        if (game.gameType === targetGame && game.gameMode === targetMode) {
             if (targetMode === "esli") {
                 if (game.partyScores && game.partyScores.length > 0) {
                     let sortedParty = [...game.partyScores].sort((a,b) => b.wins - a.wins);
@@ -445,19 +445,56 @@ function calculateAndRenderLeaderboard() {
                 }
             } 
             else {
+                // --- TEKLİ MOD İÇİN COĞRAFİ VE ADİL SKOR HESAPLAMA MOTORU ---
                 if (game.partyScores && game.partyScores.length > 0) {
-                    let sortedParty = [...game.partyScores].sort((a,b) => b.wins - a.wins);
-                    sortedParty.forEach((pScore, index) => {
-                        let individualNames = pScore.name.includes(" & ") ? pScore.name.split(" & ") : [pScore.name];
-                        individualNames.forEach(singleName => {
-                            if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true };
-                            statsMap[singleName].hasPlayed = true;
-                            let rank = index + 1;
-                            if (rank === 1) statsMap[singleName].p1 += 1;
-                            if (rank === 2) statsMap[singleName].p2 += 1;
-                            if (rank === 3) statsMap[singleName].p3 += 1;
-                            if (rank === 4) statsMap[singleName].p4 += 1;
+                    let matchPlayers = [];
+                    
+                    // Maçın içindeki tüm partilerin puanlarını toplayalım
+                    if (game.partyRoundDetails && game.partyRoundDetails.length > 0) {
+                        let summary = {};
+                        game.partyRoundDetails.forEach(party => {
+                            party.playerNames.forEach((name, pIdx) => {
+                                if (!summary[name]) summary[name] = { name: name, score: 0, wins: 0 };
+                                summary[name].score += party.finalTotals[pIdx];
+                            });
                         });
+                        game.partyScores.forEach(ps => {
+                            if (summary[ps.name]) summary[ps.name].wins = ps.wins || 0;
+                            else summary[ps.name] = { name: ps.name, score: 0, wins: ps.wins || 0 };
+                        });
+                        matchPlayers = Object.values(summary);
+                    } else {
+                        matchPlayers = game.partyScores.map(ps => ({ name: ps.name, score: 0, wins: ps.wins || 0 }));
+                    }
+
+                    // Oyunun türüne göre kazanma mantığını çöz (Okey/Batak = Düşük puan, Pişti/101 = Yüksek puan)
+                    let isLowWins = (game.gameType === "okey" || game.gameType === "batak");
+                    const winner = matchPlayers.reduce((max, p) => p.wins > max.wins ? p : max, matchPlayers[0]);
+                    if (winner) {
+                        const scores = matchPlayers.map(p => p.score);
+                        const minScore = Math.min(...scores);
+                        const maxScore = Math.max(...scores);
+                        if (winner.score === minScore && minScore !== maxScore) isLowWins = true;
+                        if (winner.score === maxScore && minScore !== maxScore) isLowWins = false;
+                    }
+
+                    // Oyuncuları önce Galibiyete, eşitlik durumunda ise topladıkları ceza/skor durumuna göre adilce diziyoruz
+                    matchPlayers.sort((a, b) => {
+                        if (b.wins !== a.wins) return b.wins - a.wins;
+                        return isLowWins ? (a.score - b.score) : (b.score - a.score);
+                    });
+
+                    // Gerçekleşen sıralamaya göre Genel Puan Tablosundaki (1, 2, 3, 4) hanelerine işletiyoruz
+                    matchPlayers.forEach((pScore, index) => {
+                        let singleName = pScore.name;
+                        if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true };
+                        statsMap[singleName].hasPlayed = true;
+                        
+                        let rank = index + 1;
+                        if (rank === 1) statsMap[singleName].p1 += 1;
+                        if (rank === 2) statsMap[singleName].p2 += 1;
+                        if (rank === 3) statsMap[singleName].p3 += 1;
+                        if (rank === 4) statsMap[singleName].p4 += 1;
                     });
                 }
             }
