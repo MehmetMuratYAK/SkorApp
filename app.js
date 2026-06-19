@@ -1062,8 +1062,25 @@ manualEndBtn.addEventListener("click", () => { if (confirm("Bu partiyi bitirip s
 function endParty() {
     gameScreen.style.display = "none"; endScreen.style.display = "block";
     
+    // YENİ: Başlangıç puanı girilmiş mi kontrol et ve bitiş matematiğini buna göre eşitle
+    let baseScore = parseInt(startScoreInput.value) || 0;
+    
     let partyTotalsOrdered = players.map((p, i) => {
-        let totalScore = 0; rounds.forEach(round => { if (round[i]) { round[i].forEach(score => { totalScore += score; }); } }); return totalScore;
+        // Eğer başlangıç puanı varsa hesaba o sayıdan başla, yoksa 0'dan başla
+        let totalScore = baseScore; 
+        
+        rounds.forEach(round => { 
+            if (round[i]) { 
+                round[i].forEach(score => { 
+                    if (baseScore > 0) {
+                        totalScore -= score; // Eksiltmeli oyun modu ise düş
+                    } else {
+                        totalScore += score; // Normal oyun modu ise topla
+                    }
+                }); 
+            } 
+        }); 
+        return totalScore;
     });
 
     let formattedRounds = rounds.map(round => {
