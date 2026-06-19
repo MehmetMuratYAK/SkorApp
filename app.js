@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, getDoc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, updatePassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // FIREBASE YAPILANDIRMASI
@@ -32,6 +32,7 @@ let pastParties = [];
 let currentParty = 1;
 let selectedGameName = "";
 let historyPartyRounds = []; 
+let activeGroupListener = null; // Canlı grup takibini hafızada tutacak değişken
 
 // ELEMAN SEÇİCİLER (DOM)
 const authScreen = document.getElementById("auth-screen");
@@ -366,26 +367,50 @@ async function fetchGroups() {
 }
 
 async function showGroupDetails(groupId) {
-    dashboardScreen.style.display = "none"; groupDetailScreen.style.display = "block";
-    statusMsg.innerText = "⏳ Veriler senkronize ediliyor..."; invitePlayerSearch.value = ""; inviteSearchResults.style.display = "none";
+    dashboardScreen.style.display = "none"; 
+    groupDetailScreen.style.display = "block";
+    invitePlayerSearch.value = ""; 
+    inviteSearchResults.style.display = "none";
     
     archiveFilterStartDate.value = "";
     archiveFilterEndDate.value = "";
 
-    const groupDoc = await getDoc(doc(db, "groups", groupId));
-    if (groupDoc.exists()) {
-        currentGroupData = groupDoc.data(); detailGroupName.innerText = `🏠 ${currentGroupData.name}`;
+    // Eğer arkada açık kalmış eski bir canlı dinleyici varsa çakışmaması için kapatıyoruz
+    if (activeGroupListener) activeGroupListener();
 
-        if (currentUserData && currentUserData.isAdmin) {
-            detailStartMatchBtn.style.display = "block"; document.getElementById("premium-match-notice").style.display = "none"; document.getElementById("group-invite-area").style.display = "block"; 
-        } else {
-            detailStartMatchBtn.style.display = "none"; document.getElementById("premium-match-notice").style.display = "block"; document.getElementById("group-invite-area").style.display = "none"; 
+    statusMsg.innerText = "⏳ Canlı grup verileri eşitleniyor...";
+
+    // MUCİZE KOD: Gruba canlı yayın hattı açıyoruz. Bulutta ne değişirse anında bu fonksiyon tetiklenir!
+    activeGroupListener = onSnapshot(doc(db, "groups", groupId), (groupDoc) => {
+        if (groupDoc.exists()) {
+            currentGroupData = groupDoc.data(); 
+            detailGroupName.innerText = `🏠 ${currentGroupData.name}`;
+
+            if (currentUserData && currentUserData.isAdmin) {
+                detailStartMatchBtn.style.display = "block"; 
+                document.getElementById("premium-match-notice").style.display = "none"; 
+                document.getElementById("group-invite-area").style.display = "block"; 
+            } else {
+                detailStartMatchBtn.style.display = "none"; 
+                document.getElementById("premium-match-notice").style.display = "block"; 
+                document.getElementById("group-invite-area").style.display = "none"; 
+            }
+
+            // Canlı Maç Var mı Kontrolü (Önceki adımda eklemiştik)
+            if (currentGroupData.activeMatch) {
+                liveMatchJoinBtn.innerText = `🔴 CANLI ${currentGroupData.activeMatch.selectedGameName.toUpperCase()} MAÇI VAR! (Katıl / İzle)`;
+                liveMatchJoinBtn.style.display = "block";
+            } else {
+                liveMatchJoinBtn.style.display = "none";
+            }
+
+            // Gruptaki herhangi bir kullanıcı maç bitirdiğinde burası otomatik çalışır 
+            // ve tabloyu ile arşivi herkesin ekranında aynı anda günceller!
+            calculateAndRenderLeaderboard();
+            renderFilteredArchive();
+            statusMsg.innerText = "✅ Veriler anlık olarak güncel.";
         }
-
-        calculateAndRenderLeaderboard();
-        renderFilteredArchive();
-        statusMsg.innerText = "✅ Veriler güncellendi.";
-    }
+    });
 }
 
 function calculateAndRenderLeaderboard() {
@@ -650,10 +675,17 @@ archiveFilterMode.addEventListener("change", renderFilteredArchive);
 archiveFilterStartDate.addEventListener("change", renderFilteredArchive);
 archiveFilterEndDate.addEventListener("change", renderFilteredArchive);
 
-detailBackBtn.addEventListener("click", () => { groupDetailScreen.style.display = "none"; dashboardScreen.style.display = "block"; fetchGroups(); });
+detailBackBtn.addEventListener("click", () => { 
+    if (activeGroupListener) { activeGroupListener(); activeGroupListener = null; } // Canlı hattı kapat
+    groupDetailScreen.style.display = "none"; 
+    dashboardScreen.style.display = "block"; 
+    fetchGroups(); 
+});
 
 detailStartMatchBtn.addEventListener("click", () => {
-    groupDetailScreen.style.display = "none"; setupScreen.style.display = "block";
+    if (activeGroupListener) { activeGroupListener(); activeGroupListener = null; } // Canlı hattı kapat
+    groupDetailScreen.style.display = "none"; 
+    setupScreen.style.display = "block";
     setupTitle.innerText = "Ekip Maç Kurulumu"; setupAddArea.style.display = "flex"; setupBackBtn.style.display = "block";
     
     gameModeSelect.value = "tekli";
