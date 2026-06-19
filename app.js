@@ -128,9 +128,16 @@ const modalScoreInput = document.getElementById("modal-score-input");
 const modalScoreConfirm = document.getElementById("modal-score-confirm");
 const modalScoreToggleSign = document.getElementById("modal-score-toggle-sign");
 
+const startScoreInput = document.getElementById("start-score");
+const nextPartyModal = document.getElementById("next-party-modal");
+const modalNextTarget = document.getElementById("modal-next-target");
+const modalNextStart = document.getElementById("modal-next-start");
+const modalNextConfirm = document.getElementById("modal-next-confirm");
+
 hamburgerBtn.addEventListener("click", () => { sideMenuPanel.classList.add("open"); });
 closeMenuBtn.addEventListener("click", () => { sideMenuPanel.classList.remove("open"); });
 modalCloseBtn.addEventListener("click", () => { matchDetailsModal.style.display = "none"; });
+gameModeSelect.addEventListener("change", updatePlayerInputComponent);
 
 // --- GİRİŞ / KAYIT EKRANI İŞLEMLERİ ---
 
@@ -817,6 +824,10 @@ function renderTable() {
     const thead = document.getElementById("score-thead"); const tbody = document.getElementById("score-tbody"); const tfoot = document.getElementById("score-tfoot");
     thead.innerHTML = `<tr><th>Turlar</th>${players.map(p => `<th>${p.name}</th>`).join('')}</tr>`; tbody.innerHTML = "";
     
+    // YENİ: Başlangıç puanı girilmiş mi kontrol et
+    let baseScore = parseInt(startScoreInput.value) || 0;
+    let totals = players.map(() => baseScore); 
+    
     rounds.forEach((round, rIndex) => {
         let tr = document.createElement("tr"); let roundNameTd = document.createElement("td"); roundNameTd.innerHTML = `<strong>${rIndex + 1}. El</strong>`; tr.appendChild(roundNameTd);
         round.forEach((playerScores, pIndex) => {
@@ -829,8 +840,20 @@ function renderTable() {
         });
         tbody.appendChild(tr);
     });
-    let totals = players.map(() => 0); 
-    rounds.forEach(round => { round.forEach((playerScores, pIndex) => { playerScores.forEach(score => { totals[pIndex] += score; }); }); });
+    
+    // Skorları topla (Veya Başlangıç puanından düş)
+    rounds.forEach(round => { 
+        round.forEach((playerScores, pIndex) => { 
+            playerScores.forEach(score => { 
+                if (baseScore > 0) {
+                    totals[pIndex] -= score; // Eksiltmeli oyun modu
+                } else {
+                    totals[pIndex] += score; // Normal toplama modu
+                }
+            }); 
+        }); 
+    });
+    
     tfoot.innerHTML = `<tr><th>TOPLAM</th>${totals.map(t => `<th>${t}</th>`).join('')}</tr>`; return totals; 
 }
 
@@ -933,8 +956,16 @@ document.getElementById("new-round-btn").addEventListener("click", () => {
 });
 
 function checkAutoEnd(totals) {
+    let baseScore = parseInt(startScoreInput.value) || 0;
     let target = parseInt(targetScoreInput.value);
-    if (!isNaN(target)) {
+    
+    // Eksiltmeli oyun modu aktifse
+    if (baseScore > 0) {
+        let finalTarget = !isNaN(target) ? target : 0; // Hedef girilmediyse 0'a ulaşan kazanır
+        let isGameOver = totals.some(t => t <= finalTarget);
+        if (isGameOver) { setTimeout(() => { alert(`Hedef puana (${finalTarget}) ulaşıldı!`); endParty(); }, 300); return true; }
+    } else if (!isNaN(target)) {
+        // Normal toplama modu aktifse
         let winCondition = winConditionSelect.value; let isGameOver = false;
         if (winCondition === "high") { isGameOver = totals.some(t => t >= target); } else { isGameOver = totals.some(t => t <= target); }
         if (isGameOver) { setTimeout(() => { alert(`Hedef puana (${target}) ulaşıldı!`); endParty(); }, 300); return true; }
@@ -985,27 +1016,55 @@ function endParty() {
     if (typeof confetti === "function") { confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); }
 }
 
-nextPartyBtn.addEventListener("click", () => { currentParty += 1; startParty(); });
+nextPartyBtn.addEventListener("click", () => {
+    // Yeni parti öncesi mevcut bitiş ve başlangıç puanlarını onay kutusuna taşıyalım
+    modalNextTarget.value = targetScoreInput.value;
+    modalNextStart.value = startScoreInput.value;
+    nextPartyModal.style.display = "flex"; // Ayar penceresini aç
+});
+
+modalNextConfirm.addEventListener("click", () => {
+    // Kullanıcının pencerede onayladığı değerleri ana ayarlara ata
+    targetScoreInput.value = modalNextTarget.value;
+    startScoreInput.value = modalNextStart.value;
+    nextPartyModal.style.display = "none"; // Pencereyi kapat
+    
+    currentParty += 1; 
+    startParty(); // Yeni partiyi başlat
+});
 
 endCompletelyBtn.addEventListener("click", async () => {
     if (confirm("Turnuvayı bitirip istatistikleri rapora işlemek istiyor musunuz?")) {
-        if (currentSelectedGroupId && currentGroupData) {
-            statusMsg.innerText = "⏳ Maç özeti buluta yazılıyor...";
+        if (currentSelectedGroupId) {
+            statusMsg.innerText = "⏳ En taze grup verileri doğrulanıyor...";
             try {
                 const groupRef = doc(db, "groups", currentSelectedGroupId);
-                let matchSummary = { 
-                    gameName: selectedGameName, 
-                    gameType: gameTypeSelect.value,
-                    gameMode: gameModeSelect.value,
-                    date: new Date().toLocaleDateString('tr-TR'), 
-                    partyScores: players.map(p => ({ name: p.name, wins: p.wins })),
-                    partyRoundDetails: historyPartyRounds 
-                };
-                let updatedRecentGames = currentGroupData.recentGames || [];
-                updatedRecentGames.unshift(matchSummary);
-                await updateDoc(groupRef, { recentGames: updatedRecentGames });
-                statusMsg.innerText = "✅ İstatistikler buluta işlendi!";
-            } catch (err) { console.log("Bulut kayıt hatası: ", err); }
+                
+                // CRITICAL FIX: Veriyi göndermeden hemen önce buluttaki en güncel dokümanı tekrar çekiyoruz
+                const freshSnap = await getDoc(groupRef);
+                if (freshSnap.exists()) {
+                    const freshGroupData = freshSnap.data();
+                    
+                    let matchSummary = { 
+                        gameName: selectedGameName, 
+                        gameType: gameTypeSelect.value,
+                        gameMode: gameModeSelect.value,
+                        date: new Date().toLocaleDateString('tr-TR'), 
+                        partyScores: players.map(p => ({ name: p.name, wins: p.wins })),
+                        partyRoundDetails: historyPartyRounds 
+                    };
+                    
+                    // Eski oyunları kaybetmeden listenin başına ekle
+                    let updatedRecentGames = freshGroupData.recentGames || [];
+                    updatedRecentGames.unshift(matchSummary);
+                    
+                    await updateDoc(groupRef, { recentGames: updatedRecentGames });
+                    statusMsg.innerText = "✅ İstatistikler ortak rapora başarıyla işlendi!";
+                }
+            } catch (err) { 
+                console.log("Bulut kayıt hatası: ", err); 
+                alert("Veritabanı senkronizasyon hatası: " + err.message);
+            }
         }
 
         currentParty = 1;

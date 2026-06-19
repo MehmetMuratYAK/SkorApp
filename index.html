@@ -221,6 +221,8 @@
                     </select>
                     <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Hedef Puan (İsteğe Bağlı)</label>
                     <input type="number" id="target-score" placeholder="Örn: 101" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
+                    <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Başlangıç Puanı (Geriye Düşmeli Oyunlar İçin)</label>
+                    <input type="number" id="start-score" placeholder="Örn: 20 veya 501" style="width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
                     <label style="font-weight: bold; color: #2c4d61; display: block; margin-bottom: 5px;">Oyun Sayma Mantığı</label>
                     <select id="stat-type" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ced4da; font-size: 16px;">
                         <option value="per-party">Her Parti = 1 Oyun Sayılsın</option>
@@ -308,8 +310,26 @@
             <button id="modal-score-confirm" class="btn-primary" style="width: 100%; padding: 14px; font-size: 16px;">Tamam (Kapat)</button>
         </div>
     </div>
+    <div id="next-party-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 6000; justify-content: center; align-items: center; padding: 15px;">
+        <div style="background: white; width: 100%; max-width: 360px; border-radius: 16px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center;">
+            <h3 style="color: #2c4d61; margin-bottom: 15px; font-size: 18px; font-weight: bold;">🎲 Yeni Parti Ayarları</h3>
+            <p style="margin-bottom: 15px; font-size: 13px; color: #7f8c8d;">Bir sonraki parti için hedef ve başlangıç puanlarını onaylayın veya güncelleyin:</p>
+            
+            <div style="text-align: left; margin-bottom: 12px;">
+                <label style="font-weight: bold; font-size: 13px; color: #2c4d61;">Hedef Puan:</label>
+                <input type="number" id="modal-next-target" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px; border: 1px solid #ced4da; box-sizing: border-box; width: 100%;">
+            </div>
+            
+            <div style="text-align: left; margin-bottom: 20px;">
+                <label style="font-weight: bold; font-size: 13px; color: #2c4d61;">Başlangıç Puanı:</label>
+                <input type="number" id="modal-next-start" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px; border: 1px solid #ced4da; box-sizing: border-box; width: 100%;">
+            </div>
 
-    <script type="module" src="app.js?v=28.0"></script>
+            <button id="modal-next-confirm" class="btn-primary" style="width: 100%; padding: 12px;">Yeni Partiyi Başlat 🚀</button>
+        </div>
+    </div>
+
+    <script type="module" src="app.js?v=29.0"></script>
 
 </body>
 </html>
