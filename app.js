@@ -339,31 +339,115 @@ createGroupBtn.addEventListener("click", async () => {
     } catch (error) { alert("Grup kurulamadı: " + error.message); }
 });
 
+let dashboardListeners = []; // Eski canlı bağlantıları temizlemek için hafıza kutusu
+
 async function fetchGroups() {
-    groupList.innerHTML = ""; const querySnapshot = await getDocs(collection(db, "groups")); let count = 0;
+    // Hafıza sızıntısı olmaması için eski ana sayfa dinleyicilerini kapatıyoruz
+    dashboardListeners.forEach(unsub => unsub());
+    dashboardListeners = [];
+
+    groupList.innerHTML = ""; 
+    const querySnapshot = await getDocs(collection(db, "groups")); 
+    let count = 0;
+    
     querySnapshot.forEach((docSnap) => {
-        const group = docSnap.data(); const emails = group.memberEmails || [];
+        const initialGroup = docSnap.data(); 
+        const emails = initialGroup.memberEmails || [];
+        
+        // Eğer giriş yapan kullanıcı bu grubun üyesiyse kartı çizmeye başla
         if (emails.includes(auth.currentUser.email)) {
-            count++; const li = document.createElement("li"); 
+            count++; 
+            const groupId = docSnap.id;
+            
+            // Ana listedeki beyaz kutuyu oluşturuyoruz
+            const li = document.createElement("li"); 
             li.className = "group-item-box";
-            li.setAttribute("data-id", docSnap.id);
-            li.style.cursor = "pointer";
-            li.innerHTML = `
-                <div class="group-info-text" style="width: 100%;">
-                    <strong>🏠 ${group.name}</strong>
-                    <div style="font-size:11px; color:#7f8c8d; margin-top:3px;">Toplam Oyuncu: ${group.members ? group.members.length : 0}</div>
-                </div>`;
+            li.setAttribute("data-id", groupId);
+            // Tasarımı dikey genişletebilmek için flex yapısını block yapıyoruz
+            li.style.cssText = "cursor: default; display: block !important; padding: 22px; background: #ffffff; margin-bottom: 20px; border-radius: 16px; border: 1px solid #dee2e6; box-shadow: 0 4px 12px rgba(0,0,0,0.03); width: 100%;";
             groupList.appendChild(li);
+
+            // MUCİZE KOD: Her grup kartına ayrı bir canlı hat bağlıyoruz. 
+            // Grupta maç bitiren olursa ana sayfa tık diye kendiliğinden yenilenir!
+            const unsub = onSnapshot(doc(db, "groups", groupId), (groupDoc) => {
+                if (groupDoc.exists()) {
+                    const group = groupDoc.data();
+                    
+                    // Kartın içini gelişmiş tablolar ve son 5 oyunla dolduruyoruz
+                    li.innerHTML = `
+                        <div style="width: 100%; text-align: left;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1c7b64; padding-bottom: 10px; margin-bottom: 15px;">
+                                <div>
+                                    <strong style="font-size: 19px; color: #1c7b64;">🏠 ${group.name}</strong>
+                                    <div style="font-size:11px; color:#7f8c8d; margin-top:2px; font-weight: 500;">Toplam Oyuncu: ${group.members ? group.members.length : 0}</div>
+                                </div>
+                                <button class="btn-primary direct-play-btn" style="width: auto; padding: 8px 16px; font-size: 13px; border-radius: 8px; height: auto; font-weight: bold; background: #1c7b64;">🎮 Maç Başlat</button>
+                            </div>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <h4 style="font-size: 13px; color: #2c4d61; margin-bottom: 8px; font-weight: bold; display: flex; align-items: center; gap: 4px;">📊 Genel Puan Durumu</h4>
+                                <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                                    <select class="dash-lead-game" style="flex: 1; padding: 8px; font-size: 12px; border-radius: 6px; border: 1px solid #ced4da; background: white; font-weight: 600; color: #333;">
+                                        <option value="okey">Okey</option>
+                                        <option value="pisti">Pişti</option>
+                                        <option value="101">101</option>
+                                        <option value="batak">Batak</option>
+                                        <option value="king">King</option>
+                                    </select>
+                                    <select class="dash-lead-mode" style="flex: 1; padding: 8px; font-size: 12px; border-radius: 6px; border: 1px solid #ced4da; background: white; font-weight: 600; color: #333;">
+                                        <option value="tekli">Tekli</option>
+                                        <option value="esli">Eşli</option>
+                                    </select>
+                                </div>
+                                <div class="table-responsive" style="margin-bottom: 0; border-radius: 8px; border: 1px solid #dee2e6;">
+                                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                                        <thead id="thead-${groupId}" style="background: #32546d; color: white;"></thead>
+                                        <tbody id="tbody-${groupId}"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 style="font-size: 13px; color: #2c4d61; margin-bottom: 8px; font-weight: bold; display: flex; align-items: center; gap: 4px;">⏳ Son Oynanan 5 Oyun</h4>
+                                <div id="archive-${groupId}" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                            </div>
+                        </div>
+                    `;
+
+                    // Puanları ve geçmiş 5 oyunu kartın içine hesaplayıp çizdiren motoru tetikle
+                    renderDashboardGroupStats(groupId, group);
+
+                    // Kartın içindeki seçiciler değiştikçe puan durumunu anlık güncelle
+                    const gSel = li.querySelector(`.dash-lead-game`);
+                    const mSel = li.querySelector(`.dash-lead-mode`);
+                    gSel.addEventListener("change", () => renderDashboardGroupStats(groupId, group));
+                    mSel.addEventListener("change", () => renderDashboardGroupStats(groupId, group));
+
+                    // Hızlı Maç Başlat butonuna basılırsa direkt lobiye uçur
+                    li.querySelector(".direct-play-btn").addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        currentSelectedGroupId = groupId;
+                        currentGroupData = group;
+                        dashboardScreen.style.display = "none"; 
+                        setupScreen.style.display = "block";
+                        setupTitle.innerText = "Ekip Maç Kurulumu"; 
+                        setupAddArea.style.display = "flex"; 
+                        setupBackBtn.style.display = "block";
+                        gameModeSelect.value = "tekli";
+                        players = []; 
+                        historyPartyRounds = []; 
+                        updatePlayerInputComponent();
+                        updateList();
+                    });
+                }
+            });
+            dashboardListeners.push(unsub);
         }
     });
     
-    document.querySelectorAll(".group-item-box").forEach(item => {
-        item.addEventListener("click", () => { 
-            currentSelectedGroupId = item.getAttribute("data-id"); 
-            showGroupDetails(currentSelectedGroupId); 
-        });
-    });
-    if (count === 0) { groupList.innerHTML = `<li style="font-style:italic; font-size:13px; color:#7f8c8d; background:none; border:none; text-align:center;">Henüz üye olduğunuz bir grup bulunmuyor.</li>`; }
+    if (count === 0) { 
+        groupList.innerHTML = `<li style="font-style:italic; font-size:13px; color:#7f8c8d; background:none; border:none; text-align:center; display:block;">Henüz üye olduğunuz bir grup bulunmuyor.</li>`; 
+    }
 }
 
 async function showGroupDetails(groupId) {
@@ -1244,3 +1328,150 @@ modalScoreToggleSign.addEventListener("click", () => {
     
     modalScoreInput.focus();
 });
+// --- ANA SAYFA PANELİ İÇİN PUAN VE SON 5 MAÇ HESAPLAMA MOTORU ---
+function renderDashboardGroupStats(groupId, groupData) {
+    const li = document.querySelector(`.group-item-box[data-id="${groupId}"]`);
+    if (!li) return;
+    
+    const gameSelect = li.querySelector(`.dash-lead-game`);
+    const modeSelect = li.querySelector(`.dash-lead-mode`);
+    if (!gameSelect || !modeSelect) return;
+
+    const targetGame = gameSelect.value;
+    const targetMode = modeSelect.value;
+    const thead = document.getElementById(`thead-${groupId}`);
+    const tbody = document.getElementById(`tbody-${groupId}`);
+    const archiveContainer = document.getElementById(`archive-${groupId}`);
+
+    // 1. ADİL LİDERLİK TABLOSU MATEMATİĞİ
+    tbody.innerHTML = "";
+    let statsMap = {};
+    groupData.members.forEach(m => {
+        statsMap[m.name] = { name: m.name, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: false };
+    });
+
+    const matchHistory = groupData.recentGames || [];
+    matchHistory.forEach(game => {
+        if (game.gameType === targetGame && game.gameMode === targetMode) {
+            if (targetMode === "esli") {
+                if (game.partyScores && game.partyScores.length > 0) {
+                    let sortedParty = [...game.partyScores].sort((a,b) => b.wins - a.wins);
+                    let maxWins = sortedParty[0].wins;
+                    game.partyScores.forEach(pScore => {
+                        let individualNames = pScore.name.includes(" & ") ? pScore.name.split(" & ") : [pScore.name];
+                        individualNames.forEach(singleName => {
+                            if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true };
+                            statsMap[singleName].hasPlayed = true;
+                            if (pScore.wins === maxWins) { statsMap[singleName].wins += 1; } 
+                            else { statsMap[singleName].losses += 1; }
+                        });
+                    });
+                }
+            } else {
+                if (game.partyScores && game.partyScores.length > 0) {
+                    let matchPlayers = [];
+                    if (game.partyRoundDetails && game.partyRoundDetails.length > 0) {
+                        let summary = {};
+                        game.partyRoundDetails.forEach(party => {
+                            party.playerNames.forEach((name, pIdx) => {
+                                if (!summary[name]) summary[name] = { name: name, score: 0, wins: 0 };
+                                summary[name].score += party.finalTotals[pIdx];
+                            });
+                        });
+                        game.partyScores.forEach(ps => {
+                            if (summary[ps.name]) summary[ps.name].wins = ps.wins || 0;
+                            else summary[ps.name] = { name: ps.name, score: 0, wins: ps.wins || 0 };
+                        });
+                        matchPlayers = Object.values(summary);
+                    } else {
+                        matchPlayers = game.partyScores.map(ps => ({ name: ps.name, score: 0, wins: ps.wins || 0 }));
+                    }
+
+                    let isLowWins = (game.gameType === "okey" || game.gameType === "batak");
+                    const winner = matchPlayers.reduce((max, p) => p.wins > max.wins ? p : max, matchPlayers[0]);
+                    if (winner) {
+                        const scores = matchPlayers.map(p => p.score);
+                        const minScore = Math.min(...scores);
+                        const maxScore = Math.max(...scores);
+                        if (winner.score === minScore && minScore !== maxScore) isLowWins = true;
+                        if (winner.score === maxScore && minScore !== maxScore) isLowWins = false;
+                    }
+
+                    matchPlayers.sort((a, b) => {
+                        if (b.wins !== a.wins) return b.wins - a.wins;
+                        return isLowWins ? (a.score - b.score) : (b.score - a.score);
+                    });
+
+                    matchPlayers.forEach((pScore, index) => {
+                        let singleName = pScore.name;
+                        if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true };
+                        statsMap[singleName].hasPlayed = true;
+                        let rank = index + 1;
+                        if (rank === 1) statsMap[singleName].p1 += 1;
+                        if (rank === 2) statsMap[singleName].p2 += 1;
+                        if (rank === 3) statsMap[singleName].p3 += 1;
+                        if (rank === 4) statsMap[singleName].p4 += 1;
+                    });
+                }
+            }
+        }
+    });
+
+    let statsArray = Object.values(statsMap);
+
+    if (targetMode === "tekli") {
+        thead.innerHTML = `<tr><th style="padding:8px 4px; text-align:left;">Oyuncu</th><th style="width:35px; text-align:center;">1</th><th style="width:35px; text-align:center;">2</th><th style="width:35px; text-align:center;">3</th><th style="width:35px; text-align:center;">4</th></tr>`;
+        statsArray.sort((a, b) => b.p1 - a.p1 || b.p2 - a.p2 || b.p3 - a.p3 || b.p4 - a.p4);
+        statsArray.forEach(row => {
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.5'}">
+                    <td style="padding:8px 4px; text-align:left; font-weight:bold; font-size:12px;">👤 ${row.name}</td>
+                    <td style="width:35px; text-align:center; color:#1c7b64; font-weight:bold;">${row.p1}</td>
+                    <td style="width:35px; text-align:center;">${row.p2}</td>
+                    <td style="text-align:center;">${row.p3}</td>
+                    <td style="width:35px; text-align:center; color:#e74c3c;">${row.p4}</td>
+                </tr>`;
+        });
+    } else {
+        thead.innerHTML = `<tr><th style="padding:8px 4px; text-align:left;">Oyuncu</th><th style="width:75px; text-align:center; color:#1c7b64;">Galibiyet</th><th style="width:75px; text-align:center; color:#e74c3c;">Mağlubiyet</th></tr>`;
+        statsArray.sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+        statsArray.forEach(row => {
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.5'}">
+                    <td style="padding:8px 4px; text-align:left; font-weight:bold; font-size:12px;">👤 ${row.name}</td>
+                    <td style="width:75px; text-align:center; color:#1c7b64; font-weight:bold;">${row.wins} Maç</td>
+                    <td style="width:75px; text-align:center; color:#e74c3c; font-weight:bold;">${row.losses} Maç</td>
+                </tr>`;
+        });
+    }
+
+    // 2. TAM OLARAK SON 5 OYUNU LİSTELEME (DİLİMLEME)
+    archiveContainer.innerHTML = "";
+    const limitedHistory = matchHistory.slice(0, 5); // İlk 5 maçı al (En son eklenenler)
+
+    limitedHistory.forEach((game) => {
+        const card = document.createElement("div");
+        card.style.cssText = "background: #fdfefe; border: 1px solid #e1e8ed; padding: 10px; border-radius: 8px; font-size: 12px; text-align: left; transition: 0.2s; cursor: pointer;";
+        
+        let scoresText = (game.partyScores || []).map(ps => `${ps.name}: <strong>${ps.wins}G</strong>`).join(" | ");
+        
+        card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; font-weight: bold; color: #32546d; margin-bottom: 4px;">
+                <span>🎮 ${game.gameName} (${game.gameMode === 'esli' ? 'Eşli' : 'Tekli'})</span>
+                <span style="font-size: 11px; font-weight: normal; color: #1c7b64;">📅 ${game.date || '-'} 🔍 Detay</span>
+            </div>
+            <div style="color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${scoresText}</div>
+        `;
+        
+        // Küçük kartlara tıklandığında eski şık el detayı penceresini fırlatsın
+        card.addEventListener("click", (e) => {
+            e.stopPropagation();
+            showExactHandDetailsModal(game); // Detay penceresini aç
+        });
+        archiveContainer.appendChild(card);
+    });
+
+    if (limitedHistory.length === 0) {
+        archiveContainer.innerHTML = `<div style="color:#7f8c8d; font-style:italic; font-size:12px; text-align:center; padding:5px;">Geçmiş oyun kaydı bulunamadı.</div>`;
+    }
+}
