@@ -66,6 +66,7 @@ const detailRecentGames = document.getElementById("detail-recent-games");
 const detailBackBtn = document.getElementById("detail-back-btn");
 const detailStartMatchBtn = document.getElementById("detail-start-match-btn");
 const leaveGroupBtn = document.getElementById("leave-group-btn");
+const liveMatchJoinBtn = document.getElementById("live-match-join-btn");
 
 const invitePlayerSearch = document.getElementById("invite-player-search");
 const inviteSearchResults = document.getElementById("invite-search-results");
@@ -219,6 +220,7 @@ setupBackBtn.addEventListener("click", () => {
 // 3. YENİ ÖZELLİK: Kaydetmeden Oyundan Çıkma Butonu ve Uyarısı
 exitGameBtn.addEventListener("click", () => {
     if (confirm("Oyundan kaydetmeden çıkmak istediğinize emin misiniz? Tüm mevcut el skorları silinecektir!")) {
+        if (currentSelectedGroupId) { const groupRef = doc(db, "groups", currentSelectedGroupId); updateDoc(groupRef, { activeMatch: null }); }
         gameScreen.style.display = "none";
         currentParty = 1;
         pastParties = [];
@@ -409,9 +411,10 @@ async function showGroupDetails(groupId) {
 
             // 🔒 EMNİYET KİLİDİ: Canlı maç butonu html içinde var mı kontrol et, yoksa sistemi kilitlemesin!
             const liveBtn = document.getElementById("live-match-join-btn");
+           // 🔒 EMNİYET KİLİDİ: Canlı maç yedeği var mı kontrol et ve kurtarma butonunu göster
+            const liveBtn = document.getElementById("live-match-join-btn");
             if (liveBtn) {
                 if (currentGroupData.activeMatch) {
-                    liveBtn.innerText = `🔴 CANLI ${currentGroupData.activeMatch.selectedGameName.toUpperCase()} MAÇI VAR! (Katıl / İzle)`;
                     liveBtn.style.display = "block";
                 } else {
                     liveBtn.style.display = "none";
@@ -897,7 +900,9 @@ function startParty() {
         panelHTML += `</div>`;
     }
     liveSeriesScore.innerHTML = panelHTML; rounds = [ players.map(() => []) ]; renderTable();
+    syncLiveMatchToCloud(); // 🔒 Maç başlar başlamaz buluta ilk yedeği al
 }
+
 
 function renderTable() {
     const thead = document.getElementById("score-thead"); const tbody = document.getElementById("score-tbody"); const tfoot = document.getElementById("score-tfoot");
@@ -976,10 +981,11 @@ function renderModalScores() {
             badge.title = "Bu skoru silmek için dokunun";
             
             // Eğer girilen skora basılırsa o skoru listeden siler
-            badge.addEventListener("click", () => {
+          badge.addEventListener("click", () => {
                 rounds[currentEditRoundIndex][currentEditPlayerIndex].splice(sIdx, 1);
                 renderTable();        // Arka plandaki ana yazboz tablosunu güncelle
                 renderModalScores();  // Modal penceresindeki listeyi anlık güncelle
+                syncLiveMatchToCloud(); // 🔒 Skor silindiğinde bulut yedeğini tazele
             });
             scoresListDiv.appendChild(badge);
         });
@@ -1003,6 +1009,7 @@ modalScoreConfirm.addEventListener("click", () => {
         // Tur bitti mi kontrolünü silme işlemine göre yeniden yapalım
         let isRoundComplete = rounds[currentEditRoundIndex].every(playerScores => playerScores.length > 0);
         if (isRoundComplete) { checkAutoEnd(currentTotals); }
+        syncLiveMatchToCloud(); // 🔒 Girilen skoru anında bulut yedeğine işlet
         return; // İşlemi burada bitir, aşağıya geçme
     }
     
@@ -1015,6 +1022,7 @@ modalScoreConfirm.addEventListener("click", () => {
         
         let isRoundComplete = rounds[currentEditRoundIndex].every(playerScores => playerScores.length > 0);
         if (isRoundComplete) { checkAutoEnd(currentTotals); }
+        syncLiveMatchToCloud(); // 🔒 Girilen skoru anında bulut yedeğine işlet
     } else { 
         alert("Lütfen geçerli bir sayı yazın!"); 
     }
@@ -1032,7 +1040,9 @@ document.getElementById("new-round-btn").addEventListener("click", () => {
     rounds.forEach(round => { round.forEach((playerScores, pIndex) => { playerScores.forEach(score => { totals[pIndex] += score; }); }); });
     if (checkAutoEnd(totals)) { return; }
     rounds.push(players.map(() => [])); renderTable();
+    syncLiveMatchToCloud(); // 🔒 Yeni el (tur) eklendiğinde buluta yedekle
 });
+
 
 function checkAutoEnd(totals) {
     let baseScore = parseInt(startScoreInput.value) || 0;
@@ -1170,7 +1180,7 @@ endCompletelyBtn.addEventListener("click", async () => {
                     let updatedRecentGames = freshGroupData.recentGames || [];
                     updatedRecentGames.unshift(matchSummary);
                     
-                    await updateDoc(groupRef, { recentGames: updatedRecentGames });
+                    await updateDoc(groupRef, { recentGames: updatedRecentGames, activeMatch: null }); // 🔒 Maç bitti, canlı yedeği başarıyla kapat
                     statusMsg.innerText = "✅ İstatistikler ortak rapora başarıyla işlendi!";
                 }
             } catch (err) { 
@@ -1286,4 +1296,68 @@ modalScoreToggleSign.addEventListener("click", () => {
     }
     
     modalScoreInput.focus();
+});
+// --- GÜVENLİK KALKANI: YANLIŞLIKLA SEKME KAPATMA/YENİLEME ENGELLEYİCİ ---
+window.addEventListener("beforeunload", (e) => {
+    if (gameScreen.style.display === "block" && rounds.length > 0) {
+        e.preventDefault();
+        e.returnValue = "⚠️ Masada devam eden bir oyununuz var! Sayfayı yenilerseniz veya kapatırsanız skorlar kaybolabilir.";
+    }
+});
+
+// --- GÜVENLİK KALKANI: BULUTA ANLIK CANLI OTO-KAYIT MOTORU ---
+async function syncLiveMatchToCloud() {
+    if (!currentSelectedGroupId) return;
+    try {
+        const groupRef = doc(db, "groups", currentSelectedGroupId);
+        await updateDoc(groupRef, {
+            activeMatch: {
+                players: players,
+                rounds: rounds,
+                currentParty: currentParty,
+                selectedGameName: selectedGameName,
+                historyPartyRounds: historyPartyRounds,
+                pastParties: pastParties,
+                gameTypeValue: gameTypeSelect.value,
+                gameModeValue: gameModeSelect.value,
+                winConditionValue: winConditionSelect.value,
+                targetScoreValue: targetScoreInput.value,
+                startScoreValue: startScoreInput.value
+            }
+        });
+    } catch (err) { console.log("Oto-yedekleme hatası:", err); }
+}
+
+// --- GÜVENLİK KALKANI: YARIM KALAN CANLI MAÇI KURTARMA TETİKLEYİCİSİ ---
+liveMatchJoinBtn.addEventListener("click", () => {
+    if (!currentSelectedGroupId || !currentGroupData || !currentGroupData.activeMatch) return;
+    
+    const am = currentGroupData.activeMatch;
+    
+    // Buluttaki canlı yedekleri hafızaya geri yüklüyoruz
+    players = am.players;
+    rounds = am.rounds;
+    currentParty = am.currentParty;
+    selectedGameName = am.selectedGameName;
+    historyPartyRounds = am.historyPartyRounds || [];
+    pastParties = am.pastParties || [];
+    
+    gameTypeSelect.value = am.gameTypeValue;
+    gameModeSelect.value = am.gameModeValue;
+    winConditionSelect.value = am.winConditionValue;
+    targetScoreInput.value = am.targetScoreValue;
+    startScoreInput.value = am.startScoreValue;
+    
+    // Ekranları değiştirip masayı açıyoruz
+    groupDetailScreen.style.display = "none";
+    gameScreen.style.display = "block";
+    
+    partyTitle.innerText = `${currentParty}. Parti Oynanıyor (${selectedGameName})`;
+    
+    let winCondition = winConditionSelect.value;
+    let panelHTML = `<div style="font-weight: bold; text-align: center; margin-bottom: 8px; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; color:#2c4d61;">🏆 GENEL SERİ: ${players.map(p => `${p.name}: ${p.wins}`).join(' - ')}</div>`;
+    liveSeriesScore.innerHTML = panelHTML;
+    
+    renderTable(); // Masayı en son kaldığı turlarla baştan çizer
+    alert("🚀 Harika! Yarım kalan maçınız bulut yedeklerinden başarıyla kurtarıldı. Devam edebilirsiniz!");
 });
