@@ -409,9 +409,7 @@ async function showGroupDetails(groupId) {
                 document.getElementById("group-invite-area").style.display = "none"; 
             }
 
-            // 🔒 EMNİYET KİLİDİ: Canlı maç butonu html içinde var mı kontrol et, yoksa sistemi kilitlemesin!
-            const liveBtn = document.getElementById("live-match-join-btn");
-           // 🔒 EMNİYET KİLİDİ: Canlı maç yedeği var mı kontrol et ve kurtarma butonunu göster
+            // 🔒 EMNİYET KİLİDİ: Çift tanımlama hatası düzeltildi!
             const liveBtn = document.getElementById("live-match-join-btn");
             if (liveBtn) {
                 if (currentGroupData.activeMatch) {
