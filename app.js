@@ -32,7 +32,7 @@ let pastParties = [];
 let currentParty = 1;
 let selectedGameName = "";
 let historyPartyRounds = []; 
-let activeGroupListener = null; // Canlı grup takibini hafızada tutacak değişken
+let activeGroupListener = null; 
 
 // ELEMAN SEÇİCİLER (DOM)
 const authScreen = document.getElementById("auth-screen");
@@ -186,7 +186,6 @@ googleAuthBtn.addEventListener("click", async () => {
     } catch (error) { alert("Google Giriş Hatası: " + error.message); statusMsg.innerText = "❌ Google girişi başarısız."; }
 });
 
-// 1. ÇALIŞMAYAN BUTON FİX: Kayıtsız Hızlı Maç Başlat Butonu
 dashboardQuickBtn.addEventListener("click", () => {
     isQuickStart = true; 
     currentSelectedGroupId = null; 
@@ -201,7 +200,6 @@ dashboardQuickBtn.addEventListener("click", () => {
     updateList();
 });
 
-// 2. ÇALIŞMAYAN BUTON FİX: Maç Kurulum Ekranındaki "Geri Dön" Butonu
 setupBackBtn.addEventListener("click", () => {
     setupScreen.style.display = "none";
     if (isQuickStart) {
@@ -217,7 +215,6 @@ setupBackBtn.addEventListener("click", () => {
     }
 });
 
-// 3. YENİ ÖZELLİK: Kaydetmeden Oyundan Çıkma Butonu ve Uyarısı
 exitGameBtn.addEventListener("click", () => {
     if (confirm("Oyundan kaydetmeden çıkmak istediğinize emin misiniz? Tüm mevcut el skorları silinecektir!")) {
         if (currentSelectedGroupId) { const groupRef = doc(db, "groups", currentSelectedGroupId); updateDoc(groupRef, { activeMatch: null }); }
@@ -302,19 +299,14 @@ async function addPlayerToGroup(username, email) {
     if (!currentSelectedGroupId || !currentGroupData) return;
     let currentEmails = currentGroupData.memberEmails || [];
     
-    // Zaten grupta aktif mi?
     if (currentEmails.includes(email)) { alert(`🚨 ${username} zaten bu gruba aktif olarak ekli!`); return; }
     
     statusMsg.innerText = "⏳ Oyuncu ekibe dahil ediliyor..."; 
     currentEmails.push(email);
     
     let currentMembers = currentGroupData.members || []; 
-    
-    // KRİTİK NOKTA: Kişi eskiden grupta var mıydı diye kontrol ediyoruz
     let isUserAlreadyExists = currentMembers.some(m => m.name === username);
     
-    // Eğer eskiden grupta yoksa (ilk defa geliyorsa) sıfır verilerle listeye ekle
-    // Eğer varsa hiçbir şey yapma, eski istatistikleriyle devam etsin!
     if (!isUserAlreadyExists) {
         currentMembers.push({ name: username, wins: 0, placements: {} });
     }
@@ -350,13 +342,12 @@ async function fetchGroups() {
         const group = docSnap.data(); 
         const emails = group.memberEmails || [];
         
-        // Kullanıcı grubun üyesiyse sadece eski sade kutucuğu çiziyoruz
         if (emails.includes(auth.currentUser.email)) {
             count++; 
             const li = document.createElement("li"); 
             li.className = "group-item-box";
             li.setAttribute("data-id", docSnap.id);
-            li.style.cursor = "pointer"; // Tıklanabilir el işareti
+            li.style.cursor = "pointer"; 
             li.innerHTML = `
                 <div class="group-info-text" style="width: 100%;">
                     <strong>🏠 ${group.name}</strong>
@@ -366,7 +357,6 @@ async function fetchGroups() {
         }
     });
     
-    // Kutucuğa tıklandığında grubun içine (detay ekranına) uçurma olayı
     document.querySelectorAll(".group-item-box").forEach(item => {
         item.addEventListener("click", () => { 
             currentSelectedGroupId = item.getAttribute("data-id"); 
@@ -388,12 +378,10 @@ async function showGroupDetails(groupId) {
     archiveFilterStartDate.value = "";
     archiveFilterEndDate.value = "";
 
-    // Eğer arkada açık kalmış eski bir canlı dinleyici varsa kapatıyoruz
     if (activeGroupListener) activeGroupListener();
 
     statusMsg.innerText = "⏳ Canlı grup verileri eşitleniyor...";
 
-    // Gruba canlı yayın hattı açıyoruz.
     activeGroupListener = onSnapshot(doc(db, "groups", groupId), (groupDoc) => {
         if (groupDoc.exists()) {
             currentGroupData = groupDoc.data(); 
@@ -409,7 +397,6 @@ async function showGroupDetails(groupId) {
                 document.getElementById("group-invite-area").style.display = "none"; 
             }
 
-            // 🔒 EMNİYET KİLİDİ: Çift tanımlama hatası düzeltildi!
             const liveBtn = document.getElementById("live-match-join-btn");
             if (liveBtn) {
                 if (currentGroupData.activeMatch) {
@@ -419,11 +406,9 @@ async function showGroupDetails(groupId) {
                 }
             }
 
-            // Tabloları ve geçmiş maçları ne olursa olsun güvenle çizdiriyoruz
             calculateAndRenderLeaderboard();
             renderFilteredArchive();
             
-            // Başarılı olduğunu doğrulamak için alt yazıyı güncelleyelim
             statusMsg.innerText = "✅ Veriler anlık olarak güncel.";
         }
     });
@@ -481,16 +466,13 @@ function calculateAndRenderLeaderboard() {
                         matchPlayers = game.partyScores.map(ps => ({ name: ps.name, score: 0, wins: ps.wins || 0 }));
                     }
 
-                    // 🎯 Oyun türüne veya buluttaki geriye düşme (isCountdown) etiketine göre kazanma yönünü anla
                     let isLowWins = (game.gameType === "okey" || game.gameType === "batak" || game.isCountdown === true);
                     
-                    // Geçmiş eski maçlarda etiket yoksa eksi puana bakarak otomatik anla (Emniyet Kilidi)
                     if (!game.hasOwnProperty('isCountdown') && matchPlayers.length > 0) {
                         const scores = matchPlayers.map(p => p.score);
                         if (Math.min(...scores) < 0) isLowWins = true;
                     }
 
-                    // Oyuncuları önce Galibiyete, eşitlik durumunda ise puan durumuna göre adilce diziyoruz
                     matchPlayers.sort((a, b) => {
                         if (b.wins !== a.wins) return b.wins - a.wins;
                         return isLowWins ? (a.score - b.score) : (b.score - a.score);
@@ -724,14 +706,14 @@ archiveFilterStartDate.addEventListener("change", renderFilteredArchive);
 archiveFilterEndDate.addEventListener("change", renderFilteredArchive);
 
 detailBackBtn.addEventListener("click", () => { 
-    if (activeGroupListener) { activeGroupListener(); activeGroupListener = null; } // Canlı hattı kapat
+    if (activeGroupListener) { activeGroupListener(); activeGroupListener = null; } 
     groupDetailScreen.style.display = "none"; 
     dashboardScreen.style.display = "block"; 
     fetchGroups(); 
 });
 
 detailStartMatchBtn.addEventListener("click", () => {
-    if (activeGroupListener) { activeGroupListener(); activeGroupListener = null; } // Canlı hattı kapat
+    if (activeGroupListener) { activeGroupListener(); activeGroupListener = null; } 
     groupDetailScreen.style.display = "none"; 
     setupScreen.style.display = "block";
     setupTitle.innerText = "Ekip Maç Kurulumu"; setupAddArea.style.display = "flex"; setupBackBtn.style.display = "block";
@@ -898,15 +880,13 @@ function startParty() {
         panelHTML += `</div>`;
     }
     liveSeriesScore.innerHTML = panelHTML; rounds = [ players.map(() => []) ]; renderTable();
-    syncLiveMatchToCloud(); // 🔒 Maç başlar başlamaz buluta ilk yedeği al
+    syncLiveMatchToCloud(); 
 }
-
 
 function renderTable() {
     const thead = document.getElementById("score-thead"); const tbody = document.getElementById("score-tbody"); const tfoot = document.getElementById("score-tfoot");
     thead.innerHTML = `<tr><th>Turlar</th>${players.map(p => `<th>${p.name}</th>`).join('')}</tr>`; tbody.innerHTML = "";
     
-    // YENİ: Başlangıç puanı girilmiş mi kontrol et
     let baseScore = parseInt(startScoreInput.value) || 0;
     let totals = players.map(() => baseScore); 
     
@@ -923,14 +903,13 @@ function renderTable() {
         tbody.appendChild(tr);
     });
     
-    // Skorları topla (Veya Başlangıç puanından düş)
     rounds.forEach(round => { 
         round.forEach((playerScores, pIndex) => { 
             playerScores.forEach(score => { 
                 if (baseScore > 0) {
-                    totals[pIndex] -= score; // Eksiltmeli oyun modu
+                    totals[pIndex] -= score; 
                 } else {
-                    totals[pIndex] += score; // Normal toplama modu
+                    totals[pIndex] += score; 
                 }
             }); 
         }); 
@@ -939,7 +918,6 @@ function renderTable() {
     tfoot.innerHTML = `<tr><th>TOPLAM</th>${totals.map(t => `<th>${t}</th>`).join('')}</tr>`; return totals; 
 }
 
-// Hangi hücreye veri girildiğini hafızada tutmak için değişkenler
 let currentEditRoundIndex = null;
 let currentEditPlayerIndex = null;
 
@@ -947,26 +925,20 @@ window.addScoreToCell = function(rIndex, pIndex) {
     currentEditRoundIndex = rIndex;
     currentEditPlayerIndex = pIndex;
     
-    // Başlığı güncelleyelim
     scoreModalTitle.innerText = `${rIndex + 1}. El - ${players[pIndex].name} için puan girin:`;
-    modalScoreInput.value = ""; // Giriş kutusunu temizle
+    modalScoreInput.value = ""; 
     
-    // Eğer bu hücrede daha önce girilmiş skorlar varsa onları listele
     renderModalScores();
+    scoreInputModal.style.display = "flex"; 
     
-    scoreInputModal.style.display = "flex"; // Pencereyi aç
-    
-    // Odaklanma ayarı
     setTimeout(() => { modalScoreInput.focus(); }, 100);
 };
 
-// MODAL İÇİNDEKİ SKORLARI LİSTELEME VE SİLME FONKSİYONU
 function renderModalScores() {
     const scoresListDiv = document.getElementById("modal-scores-list");
     const container = document.getElementById("modal-current-scores-container");
     if (!scoresListDiv || !container) return;
     
-    // O hücredeki mevcut dizi verisini alıyoruz
     const currentScores = rounds[currentEditRoundIndex][currentEditPlayerIndex] || [];
     scoresListDiv.innerHTML = "";
     
@@ -978,12 +950,11 @@ function renderModalScores() {
             badge.innerHTML = `${score > 0 ? '+' : ''}${score} <span style="color:#721c24; font-weight:bold; font-size:11px;">✕</span>`;
             badge.title = "Bu skoru silmek için dokunun";
             
-            // Eğer girilen skora basılırsa o skoru listeden siler
-          badge.addEventListener("click", () => {
+            badge.addEventListener("click", () => {
                 rounds[currentEditRoundIndex][currentEditPlayerIndex].splice(sIdx, 1);
-                renderTable();        // Arka plandaki ana yazboz tablosunu güncelle
-                renderModalScores();  // Modal penceresindeki listeyi anlık güncelle
-                syncLiveMatchToCloud(); // 🔒 Skor silindiğinde bulut yedeğini tazele
+                renderTable();        
+                renderModalScores();  
+                syncLiveMatchToCloud(); 
             });
             scoresListDiv.appendChild(badge);
         });
@@ -992,41 +963,33 @@ function renderModalScores() {
     }
 }
 
-
-
-// Tamam butonuna basılırsa skor kaydetme mantığı
-// Tamam butonuna basılırsa skor kaydetme mantığı (Boş bırakıp çıkma destekli)
 modalScoreConfirm.addEventListener("click", () => {
     let points = modalScoreInput.value.trim();
     
-    // YENİ KONTROL: Eğer kutu boşsa (Kullanıcı sadece skor silip çıkmak istiyorsa)
     if (points === "") {
-        let currentTotals = renderTable(); // Tabloyu son duruma göre tazele
-        scoreInputModal.style.display = "none"; // Pencereyi kapat ve çık
+        let currentTotals = renderTable(); 
+        scoreInputModal.style.display = "none"; 
         
-        // Tur bitti mi kontrolünü silme işlemine göre yeniden yapalım
         let isRoundComplete = rounds[currentEditRoundIndex].every(playerScores => playerScores.length > 0);
         if (isRoundComplete) { checkAutoEnd(currentTotals); }
-        syncLiveMatchToCloud(); // 🔒 Girilen skoru anında bulut yedeğine işlet
-        return; // İşlemi burada bitir, aşağıya geçme
+        syncLiveMatchToCloud(); 
+        return; 
     }
     
-    // Eğer kutu doluysa normal yeni skor ekleme mantığı çalışır
     let parsed = parseInt(points);
     if (!isNaN(parsed)) {
         rounds[currentEditRoundIndex][currentEditPlayerIndex].push(parsed); 
         let currentTotals = renderTable(); 
-        scoreInputModal.style.display = "none"; // Pencereyi gizle
+        scoreInputModal.style.display = "none"; 
         
         let isRoundComplete = rounds[currentEditRoundIndex].every(playerScores => playerScores.length > 0);
         if (isRoundComplete) { checkAutoEnd(currentTotals); }
-        syncLiveMatchToCloud(); // 🔒 Girilen skoru anında bulut yedeğine işlet
+        syncLiveMatchToCloud(); 
     } else { 
         alert("Lütfen geçerli bir sayı yazın!"); 
     }
 });
 
-// Klavyeden Enter tuşuna basılırsa da direkt onaylasın (Pratiklik olsun diye)
 modalScoreInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
         modalScoreConfirm.click();
@@ -1038,21 +1001,18 @@ document.getElementById("new-round-btn").addEventListener("click", () => {
     rounds.forEach(round => { round.forEach((playerScores, pIndex) => { playerScores.forEach(score => { totals[pIndex] += score; }); }); });
     if (checkAutoEnd(totals)) { return; }
     rounds.push(players.map(() => [])); renderTable();
-    syncLiveMatchToCloud(); // 🔒 Yeni el (tur) eklendiğinde buluta yedekle
+    syncLiveMatchToCloud(); 
 });
-
 
 function checkAutoEnd(totals) {
     let baseScore = parseInt(startScoreInput.value) || 0;
     let target = parseInt(targetScoreInput.value);
     
-    // Eksiltmeli oyun modu aktifse
     if (baseScore > 0) {
-        let finalTarget = !isNaN(target) ? target : 0; // Hedef girilmediyse 0'a ulaşan kazanır
+        let finalTarget = !isNaN(target) ? target : 0; 
         let isGameOver = totals.some(t => t <= finalTarget);
         if (isGameOver) { setTimeout(() => { alert(`Hedef puana (${finalTarget}) ulaşıldı!`); endParty(); }, 300); return true; }
     } else if (!isNaN(target)) {
-        // Normal toplama modu aktifse
         let winCondition = winConditionSelect.value; let isGameOver = false;
         if (winCondition === "high") { isGameOver = totals.some(t => t >= target); } else { isGameOver = totals.some(t => t <= target); }
         if (isGameOver) { setTimeout(() => { alert(`Hedef puana (${target}) ulaşıldı!`); endParty(); }, 300); return true; }
@@ -1099,9 +1059,8 @@ function endParty() {
     let totals = players.map((p, i) => { return { originalIndex: i, name: p.name, score: partyTotalsOrdered[i] }; });
     let winCondition = winConditionSelect.value;
     
-    // 🎯 KRİTİK DÜZELTME: Geriye düşmeli oyunda (baseScore > 0) HER ZAMAN küçük/eksi olan kazanır!
     if (baseScore > 0) {
-        totals.sort((a, b) => a.score - b.score); // Küçükten büyüğe dizer (-10, sonra 30 gelir)
+        totals.sort((a, b) => a.score - b.score); 
     } else {
         if (winCondition === "high") { 
             totals.sort((a, b) => b.score - a.score); 
@@ -1110,14 +1069,12 @@ function endParty() {
         }
     }
     
-    // Sıralama tam olarak düzeldikten sonra dereceleri işletiyoruz (Hem Tekli hem Eşli için ortak)
     totals.forEach((player, index) => {
         let rank = index + 1; 
         let playerObj = players[player.originalIndex]; 
         playerObj.placements[rank] = (playerObj.placements[rank] || 0) + 1;
     });
     
-    // Gerçek kazananı (sıralamadaki ilk kişiyi) tam olarak birinci yapıyoruz ve wins ekliyoruz!
     players[totals[0].originalIndex].wins += 1;
     
     podium.innerHTML = "";
@@ -1134,20 +1091,18 @@ function endParty() {
 }
 
 nextPartyBtn.addEventListener("click", () => {
-    // Yeni parti öncesi mevcut bitiş ve başlangıç puanlarını onay kutusuna taşıyalım
     modalNextTarget.value = targetScoreInput.value;
     modalNextStart.value = startScoreInput.value;
-    nextPartyModal.style.display = "flex"; // Ayar penceresini aç
+    nextPartyModal.style.display = "flex"; 
 });
 
 modalNextConfirm.addEventListener("click", () => {
-    // Kullanıcının pencerede onayladığı değerleri ana ayarlara ata
     targetScoreInput.value = modalNextTarget.value;
     startScoreInput.value = modalNextStart.value;
-    nextPartyModal.style.display = "none"; // Pencereyi kapat
+    nextPartyModal.style.display = "none"; 
     
     currentParty += 1; 
-    startParty(); // Yeni partiyi başlat
+    startParty(); 
 });
 
 endCompletelyBtn.addEventListener("click", async () => {
@@ -1157,28 +1112,26 @@ endCompletelyBtn.addEventListener("click", async () => {
             try {
                 const groupRef = doc(db, "groups", currentSelectedGroupId);
                 
-                // CRITICAL FIX: Veriyi göndermeden hemen önce buluttaki en güncel dokümanı tekrar çekiyoruz
                 const freshSnap = await getDoc(groupRef);
                 if (freshSnap.exists()) {
                     const freshGroupData = freshSnap.data();
                     
-                   let baseScore = parseInt(startScoreInput.value) || 0;
+                    let baseScore = parseInt(startScoreInput.value) || 0;
 
-                let matchSummary = { 
-                    gameName: selectedGameName, 
-                    gameType: gameTypeSelect.value,
-                    gameMode: gameModeSelect.value,
-                    date: new Date().toLocaleDateString('tr-TR'), 
-                    isCountdown: baseScore > 0, // 🎯 Oyunun geriye düşmeli olduğunu kalıcı arşive işliyoruz!
-                    partyScores: players.map(p => ({ name: p.name, wins: p.wins })),
-                    partyRoundDetails: historyPartyRounds 
-                };
+                    let matchSummary = { 
+                        gameName: selectedGameName, 
+                        gameType: gameTypeSelect.value,
+                        gameMode: gameModeSelect.value,
+                        date: new Date().toLocaleDateString('tr-TR'), 
+                        isCountdown: baseScore > 0, 
+                        partyScores: players.map(p => ({ name: p.name, wins: p.wins })),
+                        partyRoundDetails: historyPartyRounds 
+                    };
                     
-                    // Eski oyunları kaybetmeden listenin başına ekle
                     let updatedRecentGames = freshGroupData.recentGames || [];
                     updatedRecentGames.unshift(matchSummary);
                     
-                    await updateDoc(groupRef, { recentGames: updatedRecentGames, activeMatch: null }); // 🔒 Maç bitti, canlı yedeği başarıyla kapat
+                    await updateDoc(groupRef, { recentGames: updatedRecentGames, activeMatch: null }); 
                     statusMsg.innerText = "✅ İstatistikler ortak rapora başarıyla işlendi!";
                 }
             } catch (err) { 
@@ -1253,6 +1206,7 @@ finalRestartBtn.addEventListener("click", () => {
     currentParty = 1; pastParties = []; rounds = []; players = []; historyPartyRounds = [];
     if (auth.currentUser) { summaryScreen.style.display = "none"; dashboardScreen.style.display = "block"; fetchGroups(); } else { location.reload(); }
 });
+
 // --- GRUPTAN AYRILMA İŞLEMİ ---
 leaveGroupBtn.addEventListener("click", async () => {
     if (!currentSelectedGroupId || !currentGroupData) return;
@@ -1279,7 +1233,7 @@ leaveGroupBtn.addEventListener("click", async () => {
     }
 });
 
-// --- PUAN GİRİŞİNDE ARTI / EKSİ DEĞİŞTİRME FONKSİYONU (BAĞIMSIZ HALE GETİRİLDİ) ---
+// --- PUAN GİRİŞİNDE ARTI / EKSİ DEĞİŞTİRME FONKSİYONU ---
 modalScoreToggleSign.addEventListener("click", () => {
     let currentVal = modalScoreInput.value.trim();
     
@@ -1295,6 +1249,7 @@ modalScoreToggleSign.addEventListener("click", () => {
     
     modalScoreInput.focus();
 });
+
 // --- GÜVENLİK KALKANI: YANLIŞLIKLA SEKME KAPATMA/YENİLEME ENGELLEYİCİ ---
 window.addEventListener("beforeunload", (e) => {
     if (gameScreen.style.display === "block" && rounds.length > 0) {
@@ -1332,7 +1287,6 @@ liveMatchJoinBtn.addEventListener("click", () => {
     
     const am = currentGroupData.activeMatch;
     
-    // Buluttaki canlı yedekleri hafızaya geri yüklüyoruz
     players = am.players;
     rounds = am.rounds;
     currentParty = am.currentParty;
@@ -1346,7 +1300,6 @@ liveMatchJoinBtn.addEventListener("click", () => {
     targetScoreInput.value = am.targetScoreValue;
     startScoreInput.value = am.startScoreValue;
     
-    // Ekranları değiştirip masayı açıyoruz
     groupDetailScreen.style.display = "none";
     gameScreen.style.display = "block";
     
@@ -1356,6 +1309,6 @@ liveMatchJoinBtn.addEventListener("click", () => {
     let panelHTML = `<div style="font-weight: bold; text-align: center; margin-bottom: 8px; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; color:#2c4d61;">🏆 GENEL SERİ: ${players.map(p => `${p.name}: ${p.wins}`).join(' - ')}</div>`;
     liveSeriesScore.innerHTML = panelHTML;
     
-    renderTable(); // Masayı en son kaldığı turlarla baştan çizer
+    renderTable(); 
     alert("🚀 Harika! Yarım kalan maçınız bulut yedeklerinden başarıyla kurtarıldı. Devam edebilirsiniz!");
 });
