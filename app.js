@@ -391,16 +391,24 @@ async function showGroupDetails(groupId) {
                 detailStartMatchBtn.style.display = "block"; 
                 document.getElementById("premium-match-notice").style.display = "none"; 
                 document.getElementById("group-invite-area").style.display = "block"; 
+                // YENİ: Sezon ayarlarını sadece admin görsün
+                document.getElementById("season-settings-area").style.display = "block";
             } else {
                 detailStartMatchBtn.style.display = "none"; 
                 document.getElementById("premium-match-notice").style.display = "block"; 
                 document.getElementById("group-invite-area").style.display = "none"; 
+                document.getElementById("season-settings-area").style.display = "none";
             }
 
-            // 🔒 EMNİYET KİLİDİ: Canlı maç düz metin yedeği var mı kontrol et
+            // YENİ: Firebase'de kayıtlı puan ayarlarını kutucuklara doldur (Yoksa varsayılan 5-4-3-0 kalır)
+            document.getElementById("pt-1").value = currentGroupData.pts1 !== undefined ? currentGroupData.pts1 : 5;
+            document.getElementById("pt-2").value = currentGroupData.pts2 !== undefined ? currentGroupData.pts2 : 4;
+            document.getElementById("pt-3").value = currentGroupData.pts3 !== undefined ? currentGroupData.pts3 : 3;
+            document.getElementById("pt-4").value = currentGroupData.pts4 !== undefined ? currentGroupData.pts4 : 0;
+
             const liveBtn = document.getElementById("live-match-join-btn");
             if (liveBtn) {
-                if (currentGroupData.activeMatchRaw) { // activeMatch yerine activeMatchRaw bakıyoruz
+                if (currentGroupData.activeMatchRaw) { 
                     liveBtn.style.display = "block";
                 } else {
                     liveBtn.style.display = "none";
@@ -409,7 +417,6 @@ async function showGroupDetails(groupId) {
 
             calculateAndRenderLeaderboard();
             renderFilteredArchive();
-            
             statusMsg.innerText = "✅ Veriler anlık olarak güncel.";
         }
     });
@@ -421,16 +428,30 @@ function calculateAndRenderLeaderboard() {
     const thead = document.getElementById("leaderboard-thead");
     const tbody = document.getElementById("detail-leaderboard");
 
+    // YENİ: Çarpılacak puanları al
+    const pts1 = currentGroupData.pts1 !== undefined ? currentGroupData.pts1 : 5;
+    const pts2 = currentGroupData.pts2 !== undefined ? currentGroupData.pts2 : 4;
+    const pts3 = currentGroupData.pts3 !== undefined ? currentGroupData.pts3 : 3;
+    const pts4 = currentGroupData.pts4 !== undefined ? currentGroupData.pts4 : 0;
+
     tbody.innerHTML = "";
     
     let statsMap = {};
     currentGroupData.members.forEach(m => {
-        statsMap[m.name] = { name: m.name, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: false };
+        statsMap[m.name] = { name: m.name, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: false, totalPts: 0 };
     });
 
     const matchHistory = currentGroupData.recentGames || [];
     matchHistory.forEach(game => {
-        if (game.gameType === targetGame && game.gameMode === targetMode) {
+        // YENİ: "Genel" seçildiyse hem okeyi hem piştiyi sayıma dahil et
+        let isTargetMatch = false;
+        if (targetGame === "genel") {
+            if (game.gameType === "okey" || game.gameType === "pisti") isTargetMatch = true;
+        } else {
+            if (game.gameType === targetGame) isTargetMatch = true;
+        }
+
+        if (isTargetMatch && game.gameMode === targetMode) {
             if (targetMode === "esli") {
                 if (game.partyScores && game.partyScores.length > 0) {
                     let sortedParty = [...game.partyScores].sort((a,b) => b.wins - a.wins);
@@ -438,7 +459,7 @@ function calculateAndRenderLeaderboard() {
                     game.partyScores.forEach(pScore => {
                         let individualNames = pScore.name.includes(" & ") ? pScore.name.split(" & ") : [pScore.name];
                         individualNames.forEach(singleName => {
-                            if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true };
+                            if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true, totalPts: 0 };
                             statsMap[singleName].hasPlayed = true;
                             if (pScore.wins === maxWins) { statsMap[singleName].wins += 1; } 
                             else { statsMap[singleName].losses += 1; }
@@ -481,7 +502,7 @@ function calculateAndRenderLeaderboard() {
 
                     matchPlayers.forEach((pScore, index) => {
                         let singleName = pScore.name;
-                        if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true };
+                        if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true, totalPts: 0 };
                         statsMap[singleName].hasPlayed = true;
                         
                         let rank = index + 1;
@@ -498,17 +519,25 @@ function calculateAndRenderLeaderboard() {
     let statsArray = Object.values(statsMap);
 
     if (targetMode === "tekli") {
-        thead.innerHTML = `<tr><th style="padding:12px; text-align:left;">Oyuncu</th><th style="width:60px; text-align:center;">1</th><th style="width:60px; text-align:center;">2</th><th style="width:60px; text-align:center;">3</th><th style="width:60px; text-align:center;">4</th></tr>`;
-        statsArray.sort((a, b) => b.p1 - a.p1 || b.p2 - a.p2 || b.p3 - a.p3 || b.p4 - a.p4);
+        // YENİ: Toplam Puanı (Total Points) Matematiksel Olarak Hesapla
+        statsArray.forEach(row => {
+            row.totalPts = (row.p1 * pts1) + (row.p2 * pts2) + (row.p3 * pts3) + (row.p4 * pts4);
+        });
+
+        // YENİ: Artık sıralama TOPLAM PUAN'a göre yapılıyor
+        statsArray.sort((a, b) => b.totalPts - a.totalPts || b.p1 - a.p1 || b.p2 - a.p2);
+        
+        thead.innerHTML = `<tr><th style="padding:12px; text-align:left;">Oyuncu</th><th style="width:40px; text-align:center;">1.</th><th style="width:40px; text-align:center;">2.</th><th style="width:40px; text-align:center;">3.</th><th style="width:40px; text-align:center;">4.</th><th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th></tr>`;
         
         statsArray.forEach(row => {
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
                     <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
-                    <td style="width:60px; text-align:center; color:#1c7b64; font-weight:bold;">${row.p1}</td>
-                    <td style="width:60px; text-align:center;">${row.p2}</td>
-                    <td style="text-align:center;">${row.p3}</td>
-                    <td style="width:60px; text-align:center; color:#e74c3c;">${row.p4}</td>
+                    <td style="width:40px; text-align:center; color:#1c7b64; font-weight:bold;">${row.p1}</td>
+                    <td style="width:40px; text-align:center;">${row.p2}</td>
+                    <td style="width:40px; text-align:center;">${row.p3}</td>
+                    <td style="width:40px; text-align:center; color:#e74c3c;">${row.p4}</td>
+                    <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
                 </tr>`;
         });
     } 
@@ -1324,5 +1353,56 @@ liveMatchJoinBtn.addEventListener("click", () => {
         alert("🚀 Harika! Yarım kalan maçınız bulut yedeklerinden başarıyla kurtarıldı. Devam edebilirsiniz!");
     } catch (e) {
         alert("Maç kurtarılırken teknik bir hata oluştu: " + e.message);
+    }
+});
+// --- YENİ: PUANLAMA AYARLARINI KAYDET ---
+document.getElementById("save-points-btn").addEventListener("click", async () => {
+    if (!currentSelectedGroupId) return;
+    const pts1 = parseInt(document.getElementById("pt-1").value) || 0;
+    const pts2 = parseInt(document.getElementById("pt-2").value) || 0;
+    const pts3 = parseInt(document.getElementById("pt-3").value) || 0;
+    const pts4 = parseInt(document.getElementById("pt-4").value) || 0;
+
+    try {
+        statusMsg.innerText = "⏳ Ayarlar kaydediliyor...";
+        await updateDoc(doc(db, "groups", currentSelectedGroupId), { 
+            pts1: pts1, pts2: pts2, pts3: pts3, pts4: pts4 
+        });
+        alert("Puanlama sistemi başarıyla güncellendi!");
+    } catch(e) {
+        alert("Kayıt Hatası: " + e.message);
+    }
+});
+
+// --- YENİ: SEZONU BİTİR VE SIFIRLA ---
+document.getElementById("end-season-btn").addEventListener("click", async () => {
+    if (!currentSelectedGroupId || !currentGroupData) return;
+    
+    if(confirm("DİKKAT! Mevcut sezonu bitirip puan tablosunu sıfırlamak istiyor musunuz? (Geçmiş maç kayıtları veritabanında eski sezon olarak arşivlenecektir.)")) {
+        try {
+            statusMsg.innerText = "⏳ Sezon sıfırlanıyor...";
+            
+            // Mevcut maçları al ve eski sezonlar arşivine ekle
+            const currentGames = currentGroupData.recentGames || [];
+            const pastSeasons = currentGroupData.pastSeasons || [];
+            
+            if (currentGames.length > 0) {
+                pastSeasons.push({
+                    closedAt: new Date().toLocaleDateString('tr-TR'),
+                    games: currentGames
+                });
+            }
+
+            // recentGames dizisini temizle ve veritabanını güncelle
+            await updateDoc(doc(db, "groups", currentSelectedGroupId), { 
+                recentGames: [],
+                pastSeasons: pastSeasons,
+                seasonNumber: (currentGroupData.seasonNumber || 1) + 1
+            });
+            
+            alert("🎉 Yeni Sezon Başladı! Puan tabloları başarıyla sıfırlandı.");
+        } catch(e) {
+            alert("Sezon Sıfırlama Hatası: " + e.message);
+        }
     }
 });
