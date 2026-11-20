@@ -152,26 +152,40 @@
                 <button id="detail-start-match-btn" class="btn-primary" style="width: 100%; margin-bottom: 20px;">Yeni Maç Başlat</button>
                 <!-- YENİ EKLENEN SEZON VE PUAN AYARLARI -->
 <!-- YENİ EKLENEN SEZON VE OYUN BAZLI PUAN AYARLARI -->
+<!-- YENİ EKLENEN AKILLI SEZON VE OYUN BAZLI PUAN AYARLARI -->
 <div id="season-settings-area" style="display: none; background: #fffdf5; border: 1px solid #f1c40f; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: left;">
-    <h3 style="color: #b7950b; font-size: 14px; margin-bottom: 10px;">🏆 Sezon ve Oyun Puan Ayarları</h3>
+    <h3 style="color: #b7950b; font-size: 14px; margin-bottom: 10px;">🏆 Oyun ve Mod Bazlı Puan Ayarları</h3>
+    <p style="font-size: 11px; color: #7f8c8d; margin-bottom: 10px;">Puanını belirlemek istediğiniz oyunu ve modu seçin:</p>
     
-    <strong style="font-size: 12px; color: #2c4d61;">🎲 OKEY İçin Puanlar:</strong>
-    <div style="display: flex; gap: 10px; margin-top: 5px; margin-bottom: 10px;">
-        <div style="flex: 1;"><label style="font-size: 10px;">1. Sıra</label><input type="number" id="okey-pt-1" value="5" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
-        <div style="flex: 1;"><label style="font-size: 10px;">2. Sıra</label><input type="number" id="okey-pt-2" value="4" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
-        <div style="flex: 1;"><label style="font-size: 10px;">3. Sıra</label><input type="number" id="okey-pt-3" value="3" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
-        <div style="flex: 1;"><label style="font-size: 10px;">4. Sıra</label><input type="number" id="okey-pt-4" value="0" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+        <select id="setting-game-select" style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid #ccc; font-size: 12px;">
+            <option value="okey">Okey</option>
+            <option value="pisti">Pişti</option>
+            <option value="101">101</option>
+            <option value="batak">Batak</option>
+            <option value="king">King</option>
+        </select>
+        <select id="setting-mode-select" style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid #ccc; font-size: 12px;">
+            <option value="tekli">Tekli Mod</option>
+            <option value="esli">Eşli Mod</option>
+        </select>
     </div>
 
-    <strong style="font-size: 12px; color: #2c4d61;">🃏 PİŞTİ ve DİĞER OYUNLAR (101, Batak) İçin Puanlar:</strong>
-    <div style="display: flex; gap: 10px; margin-top: 5px; margin-bottom: 15px;">
-        <div style="flex: 1;"><label style="font-size: 10px;">1. Sıra</label><input type="number" id="diger-pt-1" value="5" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
-        <div style="flex: 1;"><label style="font-size: 10px;">2. Sıra</label><input type="number" id="diger-pt-2" value="4" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
-        <div style="flex: 1;"><label style="font-size: 10px;">3. Sıra</label><input type="number" id="diger-pt-3" value="3" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
-        <div style="flex: 1;"><label style="font-size: 10px;">4. Sıra</label><input type="number" id="diger-pt-4" value="0" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+    <!-- Tekli mod seçiliyse buralar görünecek -->
+    <div id="setting-tekli-points" style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <div style="flex: 1;"><label style="font-size: 10px;">1. Sıra</label><input type="number" id="set-pt-1" value="5" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+        <div style="flex: 1;"><label style="font-size: 10px;">2. Sıra</label><input type="number" id="set-pt-2" value="4" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+        <div style="flex: 1;"><label style="font-size: 10px;">3. Sıra</label><input type="number" id="set-pt-3" value="3" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+        <div style="flex: 1;"><label style="font-size: 10px;">4. Sıra</label><input type="number" id="set-pt-4" value="0" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+    </div>
+
+    <!-- Eşli mod seçiliyse buralar görünecek -->
+    <div id="setting-esli-points" style="display: none; gap: 10px; margin-bottom: 15px;">
+        <div style="flex: 1;"><label style="font-size: 10px;">Galibiyet (Kazanan)</label><input type="number" id="set-pt-win" value="5" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+        <div style="flex: 1;"><label style="font-size: 10px;">Mağlubiyet (Kaybeden)</label><input type="number" id="set-pt-lose" value="0" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
     </div>
     
-    <button id="save-points-btn" class="btn-secondary" style="width: 100%; margin-bottom: 15px; border-color: #f1c40f; color: #b7950b; font-weight:bold;">Ayarları Kaydet</button>
+    <button id="save-points-btn" class="btn-secondary" style="width: 100%; margin-bottom: 15px; border-color: #f1c40f; color: #b7950b; font-weight:bold;">Seçili Oyun/Mod İçin Kaydet</button>
     <button id="end-season-btn" style="width: 100%; background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">🛑 Mevcut Sezonu Bitir & Yeni Sezona Başla</button>
 </div>
 <!-- YENİ EKLENEN KISIM BİTİŞİ -->

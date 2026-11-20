@@ -400,16 +400,7 @@ async function showGroupDetails(groupId) {
                 document.getElementById("season-settings-area").style.display = "none";
             }
 
-            // YENİ: Firebase'de kayıtlı puan ayarlarını kutucuklara doldur
-            document.getElementById("okey-pt-1").value = currentGroupData.okeyPt1 !== undefined ? currentGroupData.okeyPt1 : 5;
-            document.getElementById("okey-pt-2").value = currentGroupData.okeyPt2 !== undefined ? currentGroupData.okeyPt2 : 4;
-            document.getElementById("okey-pt-3").value = currentGroupData.okeyPt3 !== undefined ? currentGroupData.okeyPt3 : 3;
-            document.getElementById("okey-pt-4").value = currentGroupData.okeyPt4 !== undefined ? currentGroupData.okeyPt4 : 0;
-
-            document.getElementById("diger-pt-1").value = currentGroupData.digerPt1 !== undefined ? currentGroupData.digerPt1 : 5;
-            document.getElementById("diger-pt-2").value = currentGroupData.digerPt2 !== undefined ? currentGroupData.digerPt2 : 4;
-            document.getElementById("diger-pt-3").value = currentGroupData.digerPt3 !== undefined ? currentGroupData.digerPt3 : 3;
-            document.getElementById("diger-pt-4").value = currentGroupData.digerPt4 !== undefined ? currentGroupData.digerPt4 : 0;
+            if (typeof loadSelectedPoints === "function") loadSelectedPoints();
 
             const liveBtn = document.getElementById("live-match-join-btn");
             if (liveBtn) {
@@ -433,21 +424,6 @@ function calculateAndRenderLeaderboard() {
     const thead = document.getElementById("leaderboard-thead");
     const tbody = document.getElementById("detail-leaderboard");
 
-    // Firebase'den kayıtlı puanları dizi olarak alalım
-    const okeyPts = [
-        currentGroupData.okeyPt1 !== undefined ? currentGroupData.okeyPt1 : 5,
-        currentGroupData.okeyPt2 !== undefined ? currentGroupData.okeyPt2 : 4,
-        currentGroupData.okeyPt3 !== undefined ? currentGroupData.okeyPt3 : 3,
-        currentGroupData.okeyPt4 !== undefined ? currentGroupData.okeyPt4 : 0
-    ];
-    
-    const digerPts = [
-        currentGroupData.digerPt1 !== undefined ? currentGroupData.digerPt1 : 5,
-        currentGroupData.digerPt2 !== undefined ? currentGroupData.digerPt2 : 4,
-        currentGroupData.digerPt3 !== undefined ? currentGroupData.digerPt3 : 3,
-        currentGroupData.digerPt4 !== undefined ? currentGroupData.digerPt4 : 0
-    ];
-
     tbody.innerHTML = "";
     
     let statsMap = {};
@@ -456,17 +432,30 @@ function calculateAndRenderLeaderboard() {
     });
 
     const matchHistory = currentGroupData.recentGames || [];
+    
+    // Veritabanından o anki oyuna/moda ait puanları bulur
+    function getPointsForMatch(gameType, gameMode) {
+        let key = `pts_${gameType}_${gameMode}`;
+        if (currentGroupData[key]) return currentGroupData[key]; 
+        
+        // Veritabanında puan yoksa varsayılanları ver
+        if (gameMode === "tekli") return [5, 4, 3, 0];
+        return [5, 0]; // Eşli için [Kazanan, Kaybeden]
+    }
+
     matchHistory.forEach(game => {
-        // "Genel" seçildiyse TÜM OYUNLARI hesaba kat
         let isTargetMatch = false;
         if (targetGame === "genel") {
-            isTargetMatch = true; 
+            isTargetMatch = true; // Genel modda tüm oyunları say
         } else {
             if (game.gameType === targetGame) isTargetMatch = true;
         }
 
-        if (isTargetMatch && game.gameMode === targetMode) {
-            if (targetMode === "esli") {
+        // Sadece hedeflenen modda olan (Tekliyse tekli, eşliyse eşli) maçları tabloya yansıt
+        if (isTargetMatch && (targetGame === "genel" || game.gameMode === targetMode)) {
+            let ptsArray = getPointsForMatch(game.gameType, game.gameMode);
+
+            if (game.gameMode === "esli") {
                 if (game.partyScores && game.partyScores.length > 0) {
                     let sortedParty = [...game.partyScores].sort((a,b) => b.wins - a.wins);
                     let maxWins = sortedParty[0].wins;
@@ -475,8 +464,14 @@ function calculateAndRenderLeaderboard() {
                         individualNames.forEach(singleName => {
                             if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true, totalPts: 0 };
                             statsMap[singleName].hasPlayed = true;
-                            if (pScore.wins === maxWins) { statsMap[singleName].wins += 1; } 
-                            else { statsMap[singleName].losses += 1; }
+                            
+                            if (pScore.wins === maxWins) { 
+                                statsMap[singleName].wins += 1; 
+                                statsMap[singleName].totalPts += ptsArray[0]; // Galibiyet Puanı
+                            } else { 
+                                statsMap[singleName].losses += 1; 
+                                statsMap[singleName].totalPts += ptsArray[1]; // Mağlubiyet Puanı
+                            }
                         });
                     });
                 }
@@ -525,16 +520,9 @@ function calculateAndRenderLeaderboard() {
                         if (rank === 3) statsMap[singleName].p3 += 1;
                         if (rank === 4) statsMap[singleName].p4 += 1;
 
-                        // YENİ: Kazanılan puanı oyunun türüne göre hesapla ve direkt toplama ekle!
-                        let earnedPts = 0;
                         if (rank <= 4) {
-                            if (game.gameType === "okey") {
-                                earnedPts = okeyPts[rank - 1]; // Okey puanlarından al
-                            } else {
-                                earnedPts = digerPts[rank - 1]; // Pişti, Batak vs. diğer puanlardan al
-                            }
+                            statsMap[singleName].totalPts += ptsArray[rank - 1]; 
                         }
-                        statsMap[singleName].totalPts += earnedPts;
                     });
                 }
             }
@@ -544,33 +532,48 @@ function calculateAndRenderLeaderboard() {
     let statsArray = Object.values(statsMap);
 
     if (targetMode === "tekli") {
-        // Artık puanlar direkt olarak maçlar sayılırken totalPts içine işlendi, sadece sıralıyoruz:
         statsArray.sort((a, b) => b.totalPts - a.totalPts || b.p1 - a.p1 || b.p2 - a.p2);
         
-        thead.innerHTML = `<tr><th style="padding:12px; text-align:left;">Oyuncu</th><th style="width:40px; text-align:center;">1.</th><th style="width:40px; text-align:center;">2.</th><th style="width:40px; text-align:center;">3.</th><th style="width:40px; text-align:center;">4.</th><th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th></tr>`;
+        // PUAN İSMİN YANINA GELDİ
+        thead.innerHTML = `<tr>
+            <th style="padding:12px; text-align:left;">Oyuncu</th>
+            <th style="width:50px; text-align:center; color:#f1c40f;">PUAN</th>
+            <th style="width:40px; text-align:center;">1.</th>
+            <th style="width:40px; text-align:center;">2.</th>
+            <th style="width:40px; text-align:center;">3.</th>
+            <th style="width:40px; text-align:center;">4.</th>
+        </tr>`;
         
         statsArray.forEach(row => {
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
                     <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
+                    <td style="width:50px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
                     <td style="width:40px; text-align:center; color:#1c7b64; font-weight:bold;">${row.p1}</td>
                     <td style="width:40px; text-align:center;">${row.p2}</td>
                     <td style="width:40px; text-align:center;">${row.p3}</td>
                     <td style="width:40px; text-align:center; color:#e74c3c;">${row.p4}</td>
-                    <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
                 </tr>`;
         });
     } 
-    else {
-        thead.innerHTML = `<tr><th style="padding:12px; text-align:left;">Oyuncu</th><th style="width:100px; text-align:center; color:#1c7b64;">Galibiyet</th><th style="width:100px; text-align:center; color:#e74c3c;">Mağlubiyet</th></tr>`;
-        statsArray.sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+    else { // EŞLİ MOD
+        statsArray.sort((a, b) => b.totalPts - a.totalPts || b.wins - a.wins);
 
+        // EŞLİ İÇİN PUAN SÜTUNU EKLENDİ
+        thead.innerHTML = `<tr>
+            <th style="padding:12px; text-align:left;">Oyuncu</th>
+            <th style="width:50px; text-align:center; color:#f1c40f;">PUAN</th>
+            <th style="width:80px; text-align:center; color:#1c7b64;">Galibiyet</th>
+            <th style="width:80px; text-align:center; color:#e74c3c;">Mağlubiyet</th>
+        </tr>`;
+        
         statsArray.forEach(row => {
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
                     <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
-                    <td style="width:100px; text-align:center; color:#1c7b64; font-weight:bold;">${row.wins} Maç</td>
-                    <td style="width:100px; text-align:center; color:#e74c3c; font-weight:bold;">${row.losses} Maç</td>
+                    <td style="width:50px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
+                    <td style="width:80px; text-align:center; color:#1c7b64; font-weight:bold;">${row.wins}</td>
+                    <td style="width:80px; text-align:center; color:#e74c3c; font-weight:bold;">${row.losses}</td>
                 </tr>`;
         });
     }
@@ -1375,43 +1378,78 @@ liveMatchJoinBtn.addEventListener("click", () => {
         alert("Maç kurtarılırken teknik bir hata oluştu: " + e.message);
     }
 });
-// --- YENİ: TÜM OYUNLARIN PUANLAMA AYARLARINI KAYDET ---
+// --- YENİ OYUN VE MOD BAZLI PUANLAMA YÖNETİMİ ---
+const settingGameSelect = document.getElementById("setting-game-select");
+const settingModeSelect = document.getElementById("setting-mode-select");
+const settingTekliPoints = document.getElementById("setting-tekli-points");
+const settingEsliPoints = document.getElementById("setting-esli-points");
+
+window.loadSelectedPoints = function() {
+    if (!currentGroupData) return;
+    const g = settingGameSelect.value;
+    const m = settingModeSelect.value;
+    const key = `pts_${g}_${m}`;
+    
+    if (m === "tekli") {
+        settingTekliPoints.style.display = "flex";
+        settingEsliPoints.style.display = "none";
+        let pts = currentGroupData[key] || [5, 4, 3, 0];
+        document.getElementById("set-pt-1").value = pts[0];
+        document.getElementById("set-pt-2").value = pts[1];
+        document.getElementById("set-pt-3").value = pts[2];
+        document.getElementById("set-pt-4").value = pts[3];
+    } else {
+        settingTekliPoints.style.display = "none";
+        settingEsliPoints.style.display = "flex";
+        let pts = currentGroupData[key] || [5, 0];
+        document.getElementById("set-pt-win").value = pts[0];
+        document.getElementById("set-pt-lose").value = pts[1];
+    }
+};
+
+if (settingGameSelect && settingModeSelect) {
+    settingGameSelect.addEventListener("change", loadSelectedPoints);
+    settingModeSelect.addEventListener("change", loadSelectedPoints);
+}
+
 document.getElementById("save-points-btn").addEventListener("click", async () => {
     if (!currentSelectedGroupId) return;
     
-    // Okey Puanları
-    const opt1 = parseInt(document.getElementById("okey-pt-1").value) || 0;
-    const opt2 = parseInt(document.getElementById("okey-pt-2").value) || 0;
-    const opt3 = parseInt(document.getElementById("okey-pt-3").value) || 0;
-    const opt4 = parseInt(document.getElementById("okey-pt-4").value) || 0;
-
-    // Pişti ve Diğer Oyunların Puanları
-    const dpt1 = parseInt(document.getElementById("diger-pt-1").value) || 0;
-    const dpt2 = parseInt(document.getElementById("diger-pt-2").value) || 0;
-    const dpt3 = parseInt(document.getElementById("diger-pt-3").value) || 0;
-    const dpt4 = parseInt(document.getElementById("diger-pt-4").value) || 0;
+    const g = settingGameSelect.value;
+    const m = settingModeSelect.value;
+    const key = `pts_${g}_${m}`; 
+    
+    let ptsArray = [];
+    if (m === "tekli") {
+        ptsArray = [
+            parseInt(document.getElementById("set-pt-1").value) || 0,
+            parseInt(document.getElementById("set-pt-2").value) || 0,
+            parseInt(document.getElementById("set-pt-3").value) || 0,
+            parseInt(document.getElementById("set-pt-4").value) || 0
+        ];
+    } else {
+        ptsArray = [
+            parseInt(document.getElementById("set-pt-win").value) || 0,
+            parseInt(document.getElementById("set-pt-lose").value) || 0
+        ];
+    }
 
     try {
         statusMsg.innerText = "⏳ Ayarlar kaydediliyor...";
         await updateDoc(doc(db, "groups", currentSelectedGroupId), { 
-            okeyPt1: opt1, okeyPt2: opt2, okeyPt3: opt3, okeyPt4: opt4,
-            digerPt1: dpt1, digerPt2: dpt2, digerPt3: dpt3, digerPt4: dpt4
+            [key]: ptsArray 
         });
-        alert("Okey ve diğer oyunlar için puanlama sistemi başarıyla güncellendi!");
+        alert(`${settingGameSelect.options[settingGameSelect.selectedIndex].text} (${m === 'tekli' ? 'Tekli' : 'Eşli'}) için puanlar başarıyla kaydedildi!`);
     } catch(e) {
         alert("Kayıt Hatası: " + e.message);
     }
 });
 
-// --- YENİ: SEZONU BİTİR VE SIFIRLA ---
 document.getElementById("end-season-btn").addEventListener("click", async () => {
     if (!currentSelectedGroupId || !currentGroupData) return;
-    
     if(confirm("DİKKAT! Mevcut sezonu bitirip puan tablosunu sıfırlamak istiyor musunuz? (Geçmiş maç kayıtları veritabanında eski sezon olarak arşivlenecektir.)")) {
         try {
             statusMsg.innerText = "⏳ Sezon sıfırlanıyor...";
-            
-            // Mevcut maçları al ve eski sezonlar arşivine ekle
             const currentGames = currentGroupData.recentGames || [];
             const pastSeasons = currentGroupData.pastSeasons || [];
             
@@ -1421,14 +1459,11 @@ document.getElementById("end-season-btn").addEventListener("click", async () => 
                     games: currentGames
                 });
             }
-
-            // recentGames dizisini temizle ve veritabanını güncelle
             await updateDoc(doc(db, "groups", currentSelectedGroupId), { 
                 recentGames: [],
                 pastSeasons: pastSeasons,
                 seasonNumber: (currentGroupData.seasonNumber || 1) + 1
             });
-            
             alert("🎉 Yeni Sezon Başladı! Puan tabloları başarıyla sıfırlandı.");
         } catch(e) {
             alert("Sezon Sıfırlama Hatası: " + e.message);
