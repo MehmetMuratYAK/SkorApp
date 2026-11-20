@@ -673,16 +673,23 @@ function calculateAndRenderLeaderboard() {
                     });
 
                     matchPlayers.forEach((pScore, index) => {
-                        let singleName = pScore.name;
-                        if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true, totalPts: 0, gamePoints: {} };
-                        statsMap[singleName].hasPlayed = true;
-                        
-                        let rank = index + 1;
-                        if (rank <= 4) {
-                            statsMap[singleName].totalPts += ptsArray[rank - 1]; 
-                            statsMap[singleName].gamePoints[game.gameType] = (statsMap[singleName].gamePoints[game.gameType] || 0) + ptsArray[rank - 1];
-                        }
-                    });
+                            let singleName = pScore.name;
+                            if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true, totalPts: 0, gamePoints: {} };
+                            statsMap[singleName].hasPlayed = true;
+                            
+                            let rank = index + 1;
+                            
+                            // EKSİK OLAN VE GERİ EKLENEN SAYIM KODLARI:
+                            if (rank === 1) statsMap[singleName].p1 += 1;
+                            if (rank === 2) statsMap[singleName].p2 += 1;
+                            if (rank === 3) statsMap[singleName].p3 += 1;
+                            if (rank === 4) statsMap[singleName].p4 += 1;
+
+                            if (rank <= 4) {
+                                statsMap[singleName].totalPts += ptsArray[rank - 1]; 
+                                statsMap[singleName].gamePoints[game.gameType] = (statsMap[singleName].gamePoints[game.gameType] || 0) + ptsArray[rank - 1];
+                            }
+                        });
                 }
             }
         }
