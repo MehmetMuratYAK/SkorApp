@@ -426,21 +426,21 @@ async function showGroupDetails(groupId) {
 }
 
 function calculateAndRenderLeaderboard() {
-    const targetGame = leaderboardGameSelect.value;
-    const targetMode = leaderboardModeSelect.value;
+    const gameSelectEl = document.getElementById("leaderboard-game-select");
+    const modeSelectEl = document.getElementById("leaderboard-mode-select");
     const seasonSelectEl = document.getElementById("leaderboard-season-select");
+    
+    let targetGame = gameSelectEl.value;
+    let targetMode = modeSelectEl.value;
     const targetSeason = seasonSelectEl ? seasonSelectEl.value : "current";
+    
     const thead = document.getElementById("leaderboard-thead");
     const tbody = document.getElementById("detail-leaderboard");
 
     tbody.innerHTML = "";
+    thead.innerHTML = "";
     
-    let statsMap = {};
-    currentGroupData.members.forEach(m => {
-        statsMap[m.name] = { name: m.name, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: false, totalPts: 0, gamePoints: {} };
-    });
-
-    // YENİ: Hangi sezon seçildiyse onun maçlarını getir
+    // 1. O an seçili sezona ait maç geçmişini al
     let matchHistory = [];
     if (targetSeason === "current") {
         matchHistory = currentGroupData.recentGames || [];
@@ -450,7 +450,71 @@ function calculateAndRenderLeaderboard() {
             matchHistory = currentGroupData.pastSeasons[sIdx].games || [];
         }
     }
+
+    // --- YENİ EKLENEN KISIM: OYNANMAYAN OYUNLARI VE MODLARI GİZLEME MANTIĞI ---
     
+    // Hangi oyunların oynandığını tespit et
+    let playedGames = new Set();
+    matchHistory.forEach(g => playedGames.add(g.gameType));
+
+    let hasVisibleGame = false;
+    Array.from(gameSelectEl.options).forEach(opt => {
+        let isPlayed = (opt.value === "genel") ? matchHistory.length > 0 : playedGames.has(opt.value);
+        
+        if (!isPlayed) {
+            opt.style.display = "none"; opt.hidden = true; opt.disabled = true;
+        } else {
+            opt.style.display = ""; opt.hidden = false; opt.disabled = false;
+            hasVisibleGame = true;
+        }
+    });
+
+    // Eğer şu an seçili olan oyun gizlendiyse (hiç oynanmamışsa), açık olan ilk oyunu otomatik seç
+    if (gameSelectEl.options[gameSelectEl.selectedIndex] && gameSelectEl.options[gameSelectEl.selectedIndex].hidden) {
+        const firstAvailable = Array.from(gameSelectEl.options).find(o => !o.hidden);
+        if (firstAvailable) {
+            gameSelectEl.value = firstAvailable.value;
+            targetGame = firstAvailable.value;
+        }
+    }
+
+    // Seçilen oyuna ait hangi modlar (tekli/eşli) oynanmış onu bul
+    let playedModesForGame = new Set();
+    matchHistory.forEach(g => {
+        if (targetGame === "genel" || g.gameType === targetGame) {
+            playedModesForGame.add(g.gameMode);
+        }
+    });
+
+    Array.from(modeSelectEl.options).forEach(opt => {
+        if (!playedModesForGame.has(opt.value)) {
+            opt.style.display = "none"; opt.hidden = true; opt.disabled = true;
+        } else {
+            opt.style.display = ""; opt.hidden = false; opt.disabled = false;
+        }
+    });
+
+    // Eğer şu an seçili mod gizlendiyse, açık olan ilk modu otomatik seç
+    if (modeSelectEl.options[modeSelectEl.selectedIndex] && modeSelectEl.options[modeSelectEl.selectedIndex].hidden) {
+        const firstAvailableMode = Array.from(modeSelectEl.options).find(o => !o.hidden);
+        if (firstAvailableMode) {
+            modeSelectEl.value = firstAvailableMode.value;
+            targetMode = firstAvailableMode.value;
+        }
+    }
+
+    // Eğer sezonda HİÇBİR oyun oynanmamışsa tabloyu boş gösterip işlemi bitir
+    if (!hasVisibleGame || matchHistory.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="padding:20px; text-align:center; color:#7f8c8d; font-style:italic;">Bu sezonda henüz hiçbir oyun oynanmadı. Tabloyu görmek için maç başlatın!</td></tr>`;
+        return;
+    }
+    // --- GİZLEME KISMI BİTİŞİ ---
+    
+    let statsMap = {};
+    currentGroupData.members.forEach(m => {
+        statsMap[m.name] = { name: m.name, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: false, totalPts: 0, gamePoints: {} };
+    });
+
     function getPointsForMatch(gameType, gameMode) {
         let key = `pts_${gameType}_${gameMode}`;
         if (currentGroupData[key]) return currentGroupData[key]; 
@@ -458,7 +522,6 @@ function calculateAndRenderLeaderboard() {
         return [5, 0]; 
     }
 
-    // --- YENİ: GEÇMİŞ SEZON MADALYALARINI HESAPLAMA MOTORU ---
     function getPlayerMedals() {
         let medals = {};
         let pastSeasons = currentGroupData.pastSeasons || [];
@@ -521,7 +584,6 @@ function calculateAndRenderLeaderboard() {
                 }
             });
 
-            // Sezon birincilerini belirle
             let sArr = Object.keys(seasonScores).map(k => ({ name: k, pts: seasonScores[k] }));
             sArr.sort((a, b) => b.pts - a.pts);
 
@@ -541,9 +603,8 @@ function calculateAndRenderLeaderboard() {
         return medals;
     }
 
-    const playerMedals = getPlayerMedals(); // Madalyaları Çek
-    // --------------------------------------------------------
-
+    const playerMedals = getPlayerMedals();
+    
     matchHistory.forEach(game => {
         let isTargetMatch = false;
         if (targetGame === "genel") {
@@ -617,11 +678,6 @@ function calculateAndRenderLeaderboard() {
                         statsMap[singleName].hasPlayed = true;
                         
                         let rank = index + 1;
-                        if (rank === 1) statsMap[singleName].p1 += 1;
-                        if (rank === 2) statsMap[singleName].p2 += 1;
-                        if (rank === 3) statsMap[singleName].p3 += 1;
-                        if (rank === 4) statsMap[singleName].p4 += 1;
-
                         if (rank <= 4) {
                             statsMap[singleName].totalPts += ptsArray[rank - 1]; 
                             statsMap[singleName].gamePoints[game.gameType] = (statsMap[singleName].gamePoints[game.gameType] || 0) + ptsArray[rank - 1];
@@ -740,7 +796,6 @@ function calculateAndRenderLeaderboard() {
         }
     }
 }
-
 function renderFilteredArchive() {
     const gameFilter = archiveFilterGame.value;
     const modeFilter = archiveFilterMode.value;
