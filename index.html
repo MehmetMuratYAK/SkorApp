@@ -127,7 +127,7 @@
                             <option value="101">101 </option>
                             <option value="batak">Batak</option>
                             <option value="king">King</option>
-                            <option value="genel">🌟 Genel (Okey + Pişti)</option>
+                            <option value="genel">🌟 Genel (Tüm Oyunlar)</option>
                         </select>
                         <select id="leaderboard-mode-select" style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ced4da;">
                             <option value="tekli">Tekli </option>
@@ -151,15 +151,24 @@
                 </button>
                 <button id="detail-start-match-btn" class="btn-primary" style="width: 100%; margin-bottom: 20px;">Yeni Maç Başlat</button>
                 <!-- YENİ EKLENEN SEZON VE PUAN AYARLARI -->
+<!-- YENİ EKLENEN SEZON VE OYUN BAZLI PUAN AYARLARI -->
 <div id="season-settings-area" style="display: none; background: #fffdf5; border: 1px solid #f1c40f; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: left;">
-    <h3 style="color: #b7950b; font-size: 14px; margin-bottom: 10px;">🏆 Sezon ve Puan Ayarları</h3>
-    <p style="font-size: 12px; color: #7f8c8d; margin-bottom: 10px;">Her derece için oyuncunun hanesine yazılacak puanı belirleyin:</p>
+    <h3 style="color: #b7950b; font-size: 14px; margin-bottom: 10px;">🏆 Sezon ve Oyun Puan Ayarları</h3>
     
-    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-        <div style="flex: 1;"><label style="font-size: 11px; font-weight: bold;">1. Sıra</label><input type="number" id="pt-1" value="5" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;"></div>
-        <div style="flex: 1;"><label style="font-size: 11px; font-weight: bold;">2. Sıra</label><input type="number" id="pt-2" value="4" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;"></div>
-        <div style="flex: 1;"><label style="font-size: 11px; font-weight: bold;">3. Sıra</label><input type="number" id="pt-3" value="3" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;"></div>
-        <div style="flex: 1;"><label style="font-size: 11px; font-weight: bold;">4. Sıra</label><input type="number" id="pt-4" value="0" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;"></div>
+    <strong style="font-size: 12px; color: #2c4d61;">🎲 OKEY İçin Puanlar:</strong>
+    <div style="display: flex; gap: 10px; margin-top: 5px; margin-bottom: 10px;">
+        <div style="flex: 1;"><label style="font-size: 10px;">1. Sıra</label><input type="number" id="okey-pt-1" value="5" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+        <div style="flex: 1;"><label style="font-size: 10px;">2. Sıra</label><input type="number" id="okey-pt-2" value="4" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+        <div style="flex: 1;"><label style="font-size: 10px;">3. Sıra</label><input type="number" id="okey-pt-3" value="3" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+        <div style="flex: 1;"><label style="font-size: 10px;">4. Sıra</label><input type="number" id="okey-pt-4" value="0" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+    </div>
+
+    <strong style="font-size: 12px; color: #2c4d61;">🃏 PİŞTİ ve DİĞER OYUNLAR (101, Batak) İçin Puanlar:</strong>
+    <div style="display: flex; gap: 10px; margin-top: 5px; margin-bottom: 15px;">
+        <div style="flex: 1;"><label style="font-size: 10px;">1. Sıra</label><input type="number" id="diger-pt-1" value="5" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+        <div style="flex: 1;"><label style="font-size: 10px;">2. Sıra</label><input type="number" id="diger-pt-2" value="4" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+        <div style="flex: 1;"><label style="font-size: 10px;">3. Sıra</label><input type="number" id="diger-pt-3" value="3" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
+        <div style="flex: 1;"><label style="font-size: 10px;">4. Sıra</label><input type="number" id="diger-pt-4" value="0" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ccc;"></div>
     </div>
     
     <button id="save-points-btn" class="btn-secondary" style="width: 100%; margin-bottom: 15px; border-color: #f1c40f; color: #b7950b; font-weight:bold;">Ayarları Kaydet</button>

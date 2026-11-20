@@ -400,11 +400,16 @@ async function showGroupDetails(groupId) {
                 document.getElementById("season-settings-area").style.display = "none";
             }
 
-            // YENİ: Firebase'de kayıtlı puan ayarlarını kutucuklara doldur (Yoksa varsayılan 5-4-3-0 kalır)
-            document.getElementById("pt-1").value = currentGroupData.pts1 !== undefined ? currentGroupData.pts1 : 5;
-            document.getElementById("pt-2").value = currentGroupData.pts2 !== undefined ? currentGroupData.pts2 : 4;
-            document.getElementById("pt-3").value = currentGroupData.pts3 !== undefined ? currentGroupData.pts3 : 3;
-            document.getElementById("pt-4").value = currentGroupData.pts4 !== undefined ? currentGroupData.pts4 : 0;
+            // YENİ: Firebase'de kayıtlı puan ayarlarını kutucuklara doldur
+            document.getElementById("okey-pt-1").value = currentGroupData.okeyPt1 !== undefined ? currentGroupData.okeyPt1 : 5;
+            document.getElementById("okey-pt-2").value = currentGroupData.okeyPt2 !== undefined ? currentGroupData.okeyPt2 : 4;
+            document.getElementById("okey-pt-3").value = currentGroupData.okeyPt3 !== undefined ? currentGroupData.okeyPt3 : 3;
+            document.getElementById("okey-pt-4").value = currentGroupData.okeyPt4 !== undefined ? currentGroupData.okeyPt4 : 0;
+
+            document.getElementById("diger-pt-1").value = currentGroupData.digerPt1 !== undefined ? currentGroupData.digerPt1 : 5;
+            document.getElementById("diger-pt-2").value = currentGroupData.digerPt2 !== undefined ? currentGroupData.digerPt2 : 4;
+            document.getElementById("diger-pt-3").value = currentGroupData.digerPt3 !== undefined ? currentGroupData.digerPt3 : 3;
+            document.getElementById("diger-pt-4").value = currentGroupData.digerPt4 !== undefined ? currentGroupData.digerPt4 : 0;
 
             const liveBtn = document.getElementById("live-match-join-btn");
             if (liveBtn) {
@@ -428,11 +433,20 @@ function calculateAndRenderLeaderboard() {
     const thead = document.getElementById("leaderboard-thead");
     const tbody = document.getElementById("detail-leaderboard");
 
-    // YENİ: Çarpılacak puanları al
-    const pts1 = currentGroupData.pts1 !== undefined ? currentGroupData.pts1 : 5;
-    const pts2 = currentGroupData.pts2 !== undefined ? currentGroupData.pts2 : 4;
-    const pts3 = currentGroupData.pts3 !== undefined ? currentGroupData.pts3 : 3;
-    const pts4 = currentGroupData.pts4 !== undefined ? currentGroupData.pts4 : 0;
+    // Firebase'den kayıtlı puanları dizi olarak alalım
+    const okeyPts = [
+        currentGroupData.okeyPt1 !== undefined ? currentGroupData.okeyPt1 : 5,
+        currentGroupData.okeyPt2 !== undefined ? currentGroupData.okeyPt2 : 4,
+        currentGroupData.okeyPt3 !== undefined ? currentGroupData.okeyPt3 : 3,
+        currentGroupData.okeyPt4 !== undefined ? currentGroupData.okeyPt4 : 0
+    ];
+    
+    const digerPts = [
+        currentGroupData.digerPt1 !== undefined ? currentGroupData.digerPt1 : 5,
+        currentGroupData.digerPt2 !== undefined ? currentGroupData.digerPt2 : 4,
+        currentGroupData.digerPt3 !== undefined ? currentGroupData.digerPt3 : 3,
+        currentGroupData.digerPt4 !== undefined ? currentGroupData.digerPt4 : 0
+    ];
 
     tbody.innerHTML = "";
     
@@ -443,10 +457,10 @@ function calculateAndRenderLeaderboard() {
 
     const matchHistory = currentGroupData.recentGames || [];
     matchHistory.forEach(game => {
-        // YENİ: "Genel" seçildiyse hem okeyi hem piştiyi sayıma dahil et
+        // "Genel" seçildiyse TÜM OYUNLARI hesaba kat
         let isTargetMatch = false;
         if (targetGame === "genel") {
-            if (game.gameType === "okey" || game.gameType === "pisti") isTargetMatch = true;
+            isTargetMatch = true; 
         } else {
             if (game.gameType === targetGame) isTargetMatch = true;
         }
@@ -510,6 +524,17 @@ function calculateAndRenderLeaderboard() {
                         if (rank === 2) statsMap[singleName].p2 += 1;
                         if (rank === 3) statsMap[singleName].p3 += 1;
                         if (rank === 4) statsMap[singleName].p4 += 1;
+
+                        // YENİ: Kazanılan puanı oyunun türüne göre hesapla ve direkt toplama ekle!
+                        let earnedPts = 0;
+                        if (rank <= 4) {
+                            if (game.gameType === "okey") {
+                                earnedPts = okeyPts[rank - 1]; // Okey puanlarından al
+                            } else {
+                                earnedPts = digerPts[rank - 1]; // Pişti, Batak vs. diğer puanlardan al
+                            }
+                        }
+                        statsMap[singleName].totalPts += earnedPts;
                     });
                 }
             }
@@ -519,12 +544,7 @@ function calculateAndRenderLeaderboard() {
     let statsArray = Object.values(statsMap);
 
     if (targetMode === "tekli") {
-        // YENİ: Toplam Puanı (Total Points) Matematiksel Olarak Hesapla
-        statsArray.forEach(row => {
-            row.totalPts = (row.p1 * pts1) + (row.p2 * pts2) + (row.p3 * pts3) + (row.p4 * pts4);
-        });
-
-        // YENİ: Artık sıralama TOPLAM PUAN'a göre yapılıyor
+        // Artık puanlar direkt olarak maçlar sayılırken totalPts içine işlendi, sadece sıralıyoruz:
         statsArray.sort((a, b) => b.totalPts - a.totalPts || b.p1 - a.p1 || b.p2 - a.p2);
         
         thead.innerHTML = `<tr><th style="padding:12px; text-align:left;">Oyuncu</th><th style="width:40px; text-align:center;">1.</th><th style="width:40px; text-align:center;">2.</th><th style="width:40px; text-align:center;">3.</th><th style="width:40px; text-align:center;">4.</th><th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th></tr>`;
@@ -1355,20 +1375,29 @@ liveMatchJoinBtn.addEventListener("click", () => {
         alert("Maç kurtarılırken teknik bir hata oluştu: " + e.message);
     }
 });
-// --- YENİ: PUANLAMA AYARLARINI KAYDET ---
+// --- YENİ: TÜM OYUNLARIN PUANLAMA AYARLARINI KAYDET ---
 document.getElementById("save-points-btn").addEventListener("click", async () => {
     if (!currentSelectedGroupId) return;
-    const pts1 = parseInt(document.getElementById("pt-1").value) || 0;
-    const pts2 = parseInt(document.getElementById("pt-2").value) || 0;
-    const pts3 = parseInt(document.getElementById("pt-3").value) || 0;
-    const pts4 = parseInt(document.getElementById("pt-4").value) || 0;
+    
+    // Okey Puanları
+    const opt1 = parseInt(document.getElementById("okey-pt-1").value) || 0;
+    const opt2 = parseInt(document.getElementById("okey-pt-2").value) || 0;
+    const opt3 = parseInt(document.getElementById("okey-pt-3").value) || 0;
+    const opt4 = parseInt(document.getElementById("okey-pt-4").value) || 0;
+
+    // Pişti ve Diğer Oyunların Puanları
+    const dpt1 = parseInt(document.getElementById("diger-pt-1").value) || 0;
+    const dpt2 = parseInt(document.getElementById("diger-pt-2").value) || 0;
+    const dpt3 = parseInt(document.getElementById("diger-pt-3").value) || 0;
+    const dpt4 = parseInt(document.getElementById("diger-pt-4").value) || 0;
 
     try {
         statusMsg.innerText = "⏳ Ayarlar kaydediliyor...";
         await updateDoc(doc(db, "groups", currentSelectedGroupId), { 
-            pts1: pts1, pts2: pts2, pts3: pts3, pts4: pts4 
+            okeyPt1: opt1, okeyPt2: opt2, okeyPt3: opt3, okeyPt4: opt4,
+            digerPt1: dpt1, digerPt2: dpt2, digerPt3: dpt3, digerPt4: dpt4
         });
-        alert("Puanlama sistemi başarıyla güncellendi!");
+        alert("Okey ve diğer oyunlar için puanlama sistemi başarıyla güncellendi!");
     } catch(e) {
         alert("Kayıt Hatası: " + e.message);
     }
