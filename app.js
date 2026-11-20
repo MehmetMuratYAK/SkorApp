@@ -931,6 +931,15 @@ archiveFilterMode.addEventListener("change", renderFilteredArchive);
 
 archiveFilterStartDate.addEventListener("change", renderFilteredArchive);
 archiveFilterEndDate.addEventListener("change", renderFilteredArchive);
+
+// YENİ: Sezon seçildiğinde tabloyu ve arşivi eski sezona göre otomatik yenile
+const seasonSelectEl = document.getElementById("leaderboard-season-select");
+if (seasonSelectEl) {
+    seasonSelectEl.addEventListener("change", () => {
+        calculateAndRenderLeaderboard();
+        renderFilteredArchive();
+    });
+}
 // YENİ: Sezon seçildiğinde tabloyu ve arşivi otomatik yenile
 document.getElementById("leaderboard-season-select").addEventListener("change", () => {
     calculateAndRenderLeaderboard();
