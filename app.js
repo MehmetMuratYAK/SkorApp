@@ -513,7 +513,7 @@ function calculateAndRenderLeaderboard() {
         return [5, 0]; 
     }
 
-    // --- SADECE BİRİNCİLERE ÖZEL GEÇMİŞ SEZON MADALYALARI HESAPLAMA ---
+  // --- SADECE BİRİNCİLERE ÖZEL GEÇMİŞ SEZON MADALYALARI HESAPLAMA ---
     function getPlayerMedals(tGame) {
         let medals = {};
         let pastSeasons = currentGroupData.pastSeasons || [];
@@ -591,12 +591,13 @@ function calculateAndRenderLeaderboard() {
             // SADECE 1. OLAN İÇİN İKONLARI BELİRLE
             let m1 = "🥇";
             if (tGame === "okey") {
-                m1 = "🏆"; // Okey 1.si için Kupa
+                m1 = "🏆"; 
             } else if (tGame === "pisti") {
-                m1 = "🃏"; // Pişti 1.si için Joker
+                m1 = "🃏"; 
             }
 
-            // Sadece 1. sıradaki oyuncuya (sArr[0]) simge veriyoruz
+            // Sadece ve sadece 1. sıradaki oyuncuya (sArr[0]) simge veriyoruz!
+            // Alt kısımdaki 2. ve 3.ye verilen kısımlar tamamen silindi.
             if (sArr.length > 0 && sArr[0].pts > 0) {
                 if(!medals[sArr[0].name]) medals[sArr[0].name] = "";
                 medals[sArr[0].name] += m1;
