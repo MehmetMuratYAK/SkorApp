@@ -446,12 +446,11 @@ function calculateAndRenderLeaderboard() {
     matchHistory.forEach(game => {
         let isTargetMatch = false;
         if (targetGame === "genel") {
-            isTargetMatch = true; // Genel modda tüm oyunları say
+            isTargetMatch = true; 
         } else {
             if (game.gameType === targetGame) isTargetMatch = true;
         }
 
-        // Sadece hedeflenen modda olan (Tekliyse tekli, eşliyse eşli) maçları tabloya yansıt
         if (isTargetMatch && (targetGame === "genel" || game.gameMode === targetMode)) {
             let ptsArray = getPointsForMatch(game.gameType, game.gameMode);
 
@@ -467,10 +466,10 @@ function calculateAndRenderLeaderboard() {
                             
                             if (pScore.wins === maxWins) { 
                                 statsMap[singleName].wins += 1; 
-                                statsMap[singleName].totalPts += ptsArray[0]; // Galibiyet Puanı
+                                statsMap[singleName].totalPts += ptsArray[0]; 
                             } else { 
                                 statsMap[singleName].losses += 1; 
-                                statsMap[singleName].totalPts += ptsArray[1]; // Mağlubiyet Puanı
+                                statsMap[singleName].totalPts += ptsArray[1]; 
                             }
                         });
                     });
@@ -534,10 +533,9 @@ function calculateAndRenderLeaderboard() {
     if (targetMode === "tekli") {
         statsArray.sort((a, b) => b.totalPts - a.totalPts || b.p1 - a.p1 || b.p2 - a.p2);
         
-        // PUAN İSMİN YANINA GELDİ
         thead.innerHTML = `<tr>
             <th style="padding:12px; text-align:left;">Oyuncu</th>
-            <th style="width:50px; text-align:center; color:#f1c40f;">PUAN</th>
+            <th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th>
             <th style="width:40px; text-align:center;">1.</th>
             <th style="width:40px; text-align:center;">2.</th>
             <th style="width:40px; text-align:center;">3.</th>
@@ -548,7 +546,7 @@ function calculateAndRenderLeaderboard() {
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
                     <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
-                    <td style="width:50px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
+                    <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
                     <td style="width:40px; text-align:center; color:#1c7b64; font-weight:bold;">${row.p1}</td>
                     <td style="width:40px; text-align:center;">${row.p2}</td>
                     <td style="width:40px; text-align:center;">${row.p3}</td>
@@ -559,10 +557,9 @@ function calculateAndRenderLeaderboard() {
     else { // EŞLİ MOD
         statsArray.sort((a, b) => b.totalPts - a.totalPts || b.wins - a.wins);
 
-        // EŞLİ İÇİN PUAN SÜTUNU EKLENDİ
         thead.innerHTML = `<tr>
             <th style="padding:12px; text-align:left;">Oyuncu</th>
-            <th style="width:50px; text-align:center; color:#f1c40f;">PUAN</th>
+            <th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th>
             <th style="width:80px; text-align:center; color:#1c7b64;">Galibiyet</th>
             <th style="width:80px; text-align:center; color:#e74c3c;">Mağlubiyet</th>
         </tr>`;
@@ -571,9 +568,9 @@ function calculateAndRenderLeaderboard() {
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
                     <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
-                    <td style="width:50px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
-                    <td style="width:80px; text-align:center; color:#1c7b64; font-weight:bold;">${row.wins}</td>
-                    <td style="width:80px; text-align:center; color:#e74c3c; font-weight:bold;">${row.losses}</td>
+                    <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
+                    <td style="width:80px; text-align:center; color:#1c7b64; font-weight:bold;">${row.wins} Maç</td>
+                    <td style="width:80px; text-align:center; color:#e74c3c; font-weight:bold;">${row.losses} Maç</td>
                 </tr>`;
         });
     }
