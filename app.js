@@ -513,7 +513,7 @@ function calculateAndRenderLeaderboard() {
         return [5, 0]; 
     }
 
-    // --- YENİ: SEÇİLEN OYUNA ÖZEL GEÇMİŞ SEZON MADALYALARI HESAPLAMA ---
+    // --- SADECE BİRİNCİLERE ÖZEL GEÇMİŞ SEZON MADALYALARI HESAPLAMA ---
     function getPlayerMedals(tGame) {
         let medals = {};
         let pastSeasons = currentGroupData.pastSeasons || [];
@@ -521,7 +521,6 @@ function calculateAndRenderLeaderboard() {
         pastSeasons.forEach(season => {
             let seasonScores = {};
             (season.games || []).forEach(game => {
-                // Sadece hedeflenen oyunun geçmişini hesapla (veya "genel" ise hepsini)
                 let isMatchIncluded = false;
                 if (tGame === "genel") {
                     isMatchIncluded = true;
@@ -589,31 +588,23 @@ function calculateAndRenderLeaderboard() {
             let sArr = Object.keys(seasonScores).map(k => ({ name: k, pts: seasonScores[k] }));
             sArr.sort((a, b) => b.pts - a.pts);
 
-            // OYUN TÜRÜNE GÖRE İKONLARI BELİRLE
-            let m1 = "🥇", m2 = "🥈", m3 = "🥉";
+            // SADECE 1. OLAN İÇİN İKONLARI BELİRLE
+            let m1 = "🥇";
             if (tGame === "okey") {
                 m1 = "🏆"; // Okey 1.si için Kupa
             } else if (tGame === "pisti") {
                 m1 = "🃏"; // Pişti 1.si için Joker
             }
 
+            // Sadece 1. sıradaki oyuncuya (sArr[0]) simge veriyoruz
             if (sArr.length > 0 && sArr[0].pts > 0) {
                 if(!medals[sArr[0].name]) medals[sArr[0].name] = "";
                 medals[sArr[0].name] += m1;
-            }
-            if (sArr.length > 1 && sArr[1].pts > 0) {
-                if(!medals[sArr[1].name]) medals[sArr[1].name] = "";
-                medals[sArr[1].name] += m2;
-            }
-            if (sArr.length > 2 && sArr[2].pts > 0) {
-                if(!medals[sArr[2].name]) medals[sArr[2].name] = "";
-                medals[sArr[2].name] += m3;
             }
         });
         return medals;
     }
 
-    // Hedeflenen oyuna göre madalyaları çağır
     const playerMedals = getPlayerMedals(targetGame);
     
     // --- ANA TABLO HESAPLAMA MOTORU ---
