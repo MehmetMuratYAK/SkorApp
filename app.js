@@ -374,12 +374,10 @@ async function showGroupDetails(groupId) {
     groupDetailScreen.style.display = "block";
     invitePlayerSearch.value = ""; 
     inviteSearchResults.style.display = "none";
-    
     archiveFilterStartDate.value = "";
     archiveFilterEndDate.value = "";
 
     if (activeGroupListener) activeGroupListener();
-
     statusMsg.innerText = "⏳ Canlı grup verileri eşitleniyor...";
 
     activeGroupListener = onSnapshot(doc(db, "groups", groupId), (groupDoc) => {
@@ -391,7 +389,6 @@ async function showGroupDetails(groupId) {
                 detailStartMatchBtn.style.display = "block"; 
                 document.getElementById("premium-match-notice").style.display = "none"; 
                 document.getElementById("group-invite-area").style.display = "block"; 
-                // YENİ: Sezon ayarlarını sadece admin görsün
                 document.getElementById("season-settings-area").style.display = "block";
             } else {
                 detailStartMatchBtn.style.display = "none"; 
@@ -402,13 +399,23 @@ async function showGroupDetails(groupId) {
 
             if (typeof loadSelectedPoints === "function") loadSelectedPoints();
 
+            // YENİ: Sezonları Açılır Menüye Doldur
+            const seasonSelect = document.getElementById("leaderboard-season-select");
+            if (seasonSelect) {
+                const currentSelection = seasonSelect.value;
+                seasonSelect.innerHTML = `<option value="current">Mevcut Sezon (Aktif)</option>`;
+                if (currentGroupData.pastSeasons && currentGroupData.pastSeasons.length > 0) {
+                    currentGroupData.pastSeasons.forEach((season, index) => {
+                        seasonSelect.innerHTML += `<option value="${index}">${index + 1}. Sezon (Bitiş: ${season.closedAt})</option>`;
+                    });
+                }
+                if (currentSelection) seasonSelect.value = currentSelection;
+            }
+
             const liveBtn = document.getElementById("live-match-join-btn");
             if (liveBtn) {
-                if (currentGroupData.activeMatchRaw) { 
-                    liveBtn.style.display = "block";
-                } else {
-                    liveBtn.style.display = "none";
-                }
+                if (currentGroupData.activeMatchRaw) { liveBtn.style.display = "block"; } 
+                else { liveBtn.style.display = "none"; }
             }
 
             calculateAndRenderLeaderboard();
@@ -421,6 +428,8 @@ async function showGroupDetails(groupId) {
 function calculateAndRenderLeaderboard() {
     const targetGame = leaderboardGameSelect.value;
     const targetMode = leaderboardModeSelect.value;
+    const seasonSelectEl = document.getElementById("leaderboard-season-select");
+    const targetSeason = seasonSelectEl ? seasonSelectEl.value : "current";
     const thead = document.getElementById("leaderboard-thead");
     const tbody = document.getElementById("detail-leaderboard");
 
@@ -428,21 +437,112 @@ function calculateAndRenderLeaderboard() {
     
     let statsMap = {};
     currentGroupData.members.forEach(m => {
-        // YENİ: gamePoints nesnesi eklendi (Hangi oyundan kaç puan aldığını tutar)
         statsMap[m.name] = { name: m.name, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: false, totalPts: 0, gamePoints: {} };
     });
 
-    const matchHistory = currentGroupData.recentGames || [];
+    // YENİ: Hangi sezon seçildiyse onun maçlarını getir
+    let matchHistory = [];
+    if (targetSeason === "current") {
+        matchHistory = currentGroupData.recentGames || [];
+    } else {
+        const sIdx = parseInt(targetSeason);
+        if (currentGroupData.pastSeasons && currentGroupData.pastSeasons[sIdx]) {
+            matchHistory = currentGroupData.pastSeasons[sIdx].games || [];
+        }
+    }
     
-    // Veritabanından o anki oyuna/moda ait puanları bulur
     function getPointsForMatch(gameType, gameMode) {
         let key = `pts_${gameType}_${gameMode}`;
         if (currentGroupData[key]) return currentGroupData[key]; 
-        
-        // Veritabanında puan yoksa varsayılanları ver
         if (gameMode === "tekli") return [5, 4, 3, 0];
-        return [5, 0]; // Eşli için [Kazanan, Kaybeden]
+        return [5, 0]; 
     }
+
+    // --- YENİ: GEÇMİŞ SEZON MADALYALARINI HESAPLAMA MOTORU ---
+    function getPlayerMedals() {
+        let medals = {};
+        let pastSeasons = currentGroupData.pastSeasons || [];
+        
+        pastSeasons.forEach(season => {
+            let seasonScores = {};
+            (season.games || []).forEach(game => {
+                let ptsArray = getPointsForMatch(game.gameType, game.gameMode);
+                if (game.gameMode === "esli") {
+                    if (game.partyScores && game.partyScores.length > 0) {
+                        let sortedParty = [...game.partyScores].sort((a,b) => b.wins - a.wins);
+                        let maxWins = sortedParty[0].wins;
+                        game.partyScores.forEach(pScore => {
+                            let names = pScore.name.includes(" & ") ? pScore.name.split(" & ") : [pScore.name];
+                            names.forEach(n => {
+                                if(!seasonScores[n]) seasonScores[n] = 0;
+                                seasonScores[n] += (pScore.wins === maxWins) ? ptsArray[0] : ptsArray[1];
+                            });
+                        });
+                    }
+                } else {
+                    if (game.partyScores && game.partyScores.length > 0) {
+                        let matchPlayers = [];
+                        if (game.partyRoundDetails && game.partyRoundDetails.length > 0) {
+                            let summary = {};
+                            game.partyRoundDetails.forEach(party => {
+                                party.playerNames.forEach((n, pIdx) => {
+                                    if (!summary[n]) summary[n] = { name: n, score: 0, wins: 0 };
+                                    summary[n].score += party.finalTotals[pIdx];
+                                });
+                            });
+                            game.partyScores.forEach(ps => {
+                                if (summary[ps.name]) summary[ps.name].wins = ps.wins || 0;
+                                else summary[ps.name] = { name: ps.name, score: 0, wins: ps.wins || 0 };
+                            });
+                            matchPlayers = Object.values(summary);
+                        } else {
+                            matchPlayers = game.partyScores.map(ps => ({ name: ps.name, score: 0, wins: ps.wins || 0 }));
+                        }
+
+                        let isLowWins = (game.gameType === "okey" || game.gameType === "batak" || game.isCountdown === true);
+                        if (!game.hasOwnProperty('isCountdown') && matchPlayers.length > 0) {
+                            const scores = matchPlayers.map(p => p.score);
+                            if (Math.min(...scores) < 0) isLowWins = true;
+                        }
+
+                        matchPlayers.sort((a, b) => {
+                            if (b.wins !== a.wins) return b.wins - a.wins;
+                            return isLowWins ? (a.score - b.score) : (b.score - a.score);
+                        });
+
+                        matchPlayers.forEach((pScore, index) => {
+                            let rank = index + 1;
+                            if (rank <= 4) {
+                                if(!seasonScores[pScore.name]) seasonScores[pScore.name] = 0;
+                                seasonScores[pScore.name] += ptsArray[rank - 1];
+                            }
+                        });
+                    }
+                }
+            });
+
+            // Sezon birincilerini belirle
+            let sArr = Object.keys(seasonScores).map(k => ({ name: k, pts: seasonScores[k] }));
+            sArr.sort((a, b) => b.pts - a.pts);
+
+            if (sArr.length > 0 && sArr[0].pts > 0) {
+                if(!medals[sArr[0].name]) medals[sArr[0].name] = "";
+                medals[sArr[0].name] += "🥇";
+            }
+            if (sArr.length > 1 && sArr[1].pts > 0) {
+                if(!medals[sArr[1].name]) medals[sArr[1].name] = "";
+                medals[sArr[1].name] += "🥈";
+            }
+            if (sArr.length > 2 && sArr[2].pts > 0) {
+                if(!medals[sArr[2].name]) medals[sArr[2].name] = "";
+                medals[sArr[2].name] += "🥉";
+            }
+        });
+        return medals;
+    }
+
+    const playerMedals = getPlayerMedals(); // Madalyaları Çek
+    // --------------------------------------------------------
 
     matchHistory.forEach(game => {
         let isTargetMatch = false;
@@ -533,14 +633,11 @@ function calculateAndRenderLeaderboard() {
     });
 
     let statsArray = Object.values(statsMap);
-    
-    // Oyun isimlerini Türkçeye çevirmek için yardımcı liste
     const gameNamesMap = { pisti: "Pişti", okey: "Okey", "101": "101", batak: "Batak", king: "King" };
 
     if (targetMode === "tekli") {
         statsArray.sort((a, b) => b.totalPts - a.totalPts || b.p1 - a.p1 || b.p2 - a.p2);
         
-        // YENİ: GENEL seçiliyse tablo yapısını farklı çiz
         if (targetGame === "genel") {
             thead.innerHTML = `<tr>
                 <th style="padding:12px; text-align:left;">Oyuncu</th>
@@ -551,23 +648,24 @@ function calculateAndRenderLeaderboard() {
             statsArray.forEach(row => {
                 let detailsHtml = "";
                 for (let gType in row.gamePoints) {
-                    if (row.gamePoints[gType] > 0) { // Sadece puanı 0'dan büyük olanları (oynananları) yaz
+                    if (row.gamePoints[gType] > 0) { 
                         let gName = gameNamesMap[gType] || gType;
                         detailsHtml += `<span style="display:inline-block; background:#f8f9fa; border:1px solid #ced4da; border-radius:6px; padding:3px 8px; font-size:11px; margin:2px; color:#2c3e50;">${gName}: <strong style="color:#1c7b64;">${row.gamePoints[gType]}</strong></span>`;
                     }
                 }
                 if (detailsHtml === "") detailsHtml = '<span style="font-size:11px; color:#adb5bd;">-</span>';
+                
+                let medalHtml = playerMedals[row.name] ? `<span style="font-size:16px; margin-left:6px;" title="Geçmiş Sezon Başarıları">${playerMedals[row.name]}</span>` : "";
 
                 tbody.innerHTML += `
                     <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
-                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
+                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name} ${medalHtml}</td>
                         <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
                         <td style="text-align:left; padding:8px;">${detailsHtml}</td>
                     </tr>`;
             });
         } 
         else {
-            // YENİ: GENEL DIŞINDA BİR OYUN SEÇİLİYSE ESKİ HALİ GİBİ 1., 2., 3., 4. GÖSTER
             thead.innerHTML = `<tr>
                 <th style="padding:12px; text-align:left;">Oyuncu</th>
                 <th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th>
@@ -578,9 +676,11 @@ function calculateAndRenderLeaderboard() {
             </tr>`;
             
             statsArray.forEach(row => {
+                let medalHtml = playerMedals[row.name] ? `<span style="font-size:16px; margin-left:6px;" title="Geçmiş Sezon Başarıları">${playerMedals[row.name]}</span>` : "";
+
                 tbody.innerHTML += `
                     <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
-                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
+                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name} ${medalHtml}</td>
                         <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
                         <td style="width:40px; text-align:center; color:#1c7b64; font-weight:bold;">${row.p1}</td>
                         <td style="width:40px; text-align:center;">${row.p2}</td>
@@ -590,10 +690,9 @@ function calculateAndRenderLeaderboard() {
             });
         }
     } 
-    else { // EŞLİ MOD
+    else { 
         statsArray.sort((a, b) => b.totalPts - a.totalPts || b.wins - a.wins);
 
-        // YENİ: GENEL VE EŞLİ SEÇİLİYSE
         if (targetGame === "genel") {
             thead.innerHTML = `<tr>
                 <th style="padding:12px; text-align:left;">Oyuncu</th>
@@ -610,16 +709,16 @@ function calculateAndRenderLeaderboard() {
                     }
                 }
                 if (detailsHtml === "") detailsHtml = '<span style="font-size:11px; color:#adb5bd;">-</span>';
+                let medalHtml = playerMedals[row.name] ? `<span style="font-size:16px; margin-left:6px;" title="Geçmiş Sezon Başarıları">${playerMedals[row.name]}</span>` : "";
 
                 tbody.innerHTML += `
                     <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
-                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
+                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name} ${medalHtml}</td>
                         <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
                         <td style="text-align:left; padding:8px;">${detailsHtml}</td>
                     </tr>`;
             });
         } else {
-            // YENİ: BİR OYUN SEÇİLİ VE EŞLİ SEÇİLİYSE ESKİ HALİ (GALİBİYET / MAĞLUBİYET)
             thead.innerHTML = `<tr>
                 <th style="padding:12px; text-align:left;">Oyuncu</th>
                 <th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th>
@@ -628,9 +727,11 @@ function calculateAndRenderLeaderboard() {
             </tr>`;
             
             statsArray.forEach(row => {
+                let medalHtml = playerMedals[row.name] ? `<span style="font-size:16px; margin-left:6px;" title="Geçmiş Sezon Başarıları">${playerMedals[row.name]}</span>` : "";
+
                 tbody.innerHTML += `
                     <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
-                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
+                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name} ${medalHtml}</td>
                         <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
                         <td style="width:80px; text-align:center; color:#1c7b64; font-weight:bold;">${row.wins}</td>
                         <td style="width:80px; text-align:center; color:#e74c3c; font-weight:bold;">${row.losses}</td>
@@ -639,16 +740,30 @@ function calculateAndRenderLeaderboard() {
         }
     }
 }
+
 function renderFilteredArchive() {
     const gameFilter = archiveFilterGame.value;
     const modeFilter = archiveFilterMode.value;
     const startDateVal = archiveFilterStartDate.value; 
     const endDateVal = archiveFilterEndDate.value; 
+    
+    // YENİ: Seçili sezonun arşivini getir
+    const seasonSelectEl = document.getElementById("leaderboard-season-select");
+    const targetSeason = seasonSelectEl ? seasonSelectEl.value : "current";
 
     const container = document.getElementById("detail-recent-games");
     container.innerHTML = "";
 
-    const matchHistory = currentGroupData.recentGames || [];
+    let matchHistory = [];
+    if (targetSeason === "current") {
+        matchHistory = currentGroupData.recentGames || [];
+    } else {
+        const sIdx = parseInt(targetSeason);
+        if (currentGroupData.pastSeasons && currentGroupData.pastSeasons[sIdx]) {
+            matchHistory = currentGroupData.pastSeasons[sIdx].games || [];
+        }
+    }
+
     let count = 0;
 
     matchHistory.forEach((game) => {
@@ -663,7 +778,6 @@ function renderFilteredArchive() {
             if (dateParts.length === 3) {
                 const gameDateObj = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
                 gameDateObj.setHours(0,0,0,0);
-
                 if (startDateVal) {
                     const startObj = new Date(startDateVal);
                     startObj.setHours(0,0,0,0);
@@ -817,6 +931,11 @@ archiveFilterMode.addEventListener("change", renderFilteredArchive);
 
 archiveFilterStartDate.addEventListener("change", renderFilteredArchive);
 archiveFilterEndDate.addEventListener("change", renderFilteredArchive);
+// YENİ: Sezon seçildiğinde tabloyu ve arşivi otomatik yenile
+document.getElementById("leaderboard-season-select").addEventListener("change", () => {
+    calculateAndRenderLeaderboard();
+    renderFilteredArchive();
+});
 
 detailBackBtn.addEventListener("click", () => { 
     if (activeGroupListener) { activeGroupListener(); activeGroupListener = null; } 
