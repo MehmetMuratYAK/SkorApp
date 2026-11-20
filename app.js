@@ -440,7 +440,6 @@ function calculateAndRenderLeaderboard() {
     tbody.innerHTML = "";
     thead.innerHTML = "";
     
-    // 1. O an seçili sezona ait maç geçmişini al
     let matchHistory = [];
     if (targetSeason === "current") {
         matchHistory = currentGroupData.recentGames || [];
@@ -451,16 +450,13 @@ function calculateAndRenderLeaderboard() {
         }
     }
 
-    // --- YENİ EKLENEN KISIM: OYNANMAYAN OYUNLARI VE MODLARI GİZLEME MANTIĞI ---
-    
-    // Hangi oyunların oynandığını tespit et
+    // --- OYNANMAYAN OYUNLARI/MODLARI GİZLEME MANTIĞI ---
     let playedGames = new Set();
     matchHistory.forEach(g => playedGames.add(g.gameType));
 
     let hasVisibleGame = false;
     Array.from(gameSelectEl.options).forEach(opt => {
         let isPlayed = (opt.value === "genel") ? matchHistory.length > 0 : playedGames.has(opt.value);
-        
         if (!isPlayed) {
             opt.style.display = "none"; opt.hidden = true; opt.disabled = true;
         } else {
@@ -469,7 +465,6 @@ function calculateAndRenderLeaderboard() {
         }
     });
 
-    // Eğer şu an seçili olan oyun gizlendiyse (hiç oynanmamışsa), açık olan ilk oyunu otomatik seç
     if (gameSelectEl.options[gameSelectEl.selectedIndex] && gameSelectEl.options[gameSelectEl.selectedIndex].hidden) {
         const firstAvailable = Array.from(gameSelectEl.options).find(o => !o.hidden);
         if (firstAvailable) {
@@ -478,7 +473,6 @@ function calculateAndRenderLeaderboard() {
         }
     }
 
-    // Seçilen oyuna ait hangi modlar (tekli/eşli) oynanmış onu bul
     let playedModesForGame = new Set();
     matchHistory.forEach(g => {
         if (targetGame === "genel" || g.gameType === targetGame) {
@@ -494,7 +488,6 @@ function calculateAndRenderLeaderboard() {
         }
     });
 
-    // Eğer şu an seçili mod gizlendiyse, açık olan ilk modu otomatik seç
     if (modeSelectEl.options[modeSelectEl.selectedIndex] && modeSelectEl.options[modeSelectEl.selectedIndex].hidden) {
         const firstAvailableMode = Array.from(modeSelectEl.options).find(o => !o.hidden);
         if (firstAvailableMode) {
@@ -503,12 +496,10 @@ function calculateAndRenderLeaderboard() {
         }
     }
 
-    // Eğer sezonda HİÇBİR oyun oynanmamışsa tabloyu boş gösterip işlemi bitir
     if (!hasVisibleGame || matchHistory.length === 0) {
         tbody.innerHTML = `<tr><td colspan="10" style="padding:20px; text-align:center; color:#7f8c8d; font-style:italic;">Bu sezonda henüz hiçbir oyun oynanmadı. Tabloyu görmek için maç başlatın!</td></tr>`;
         return;
     }
-    // --- GİZLEME KISMI BİTİŞİ ---
     
     let statsMap = {};
     currentGroupData.members.forEach(m => {
@@ -605,6 +596,7 @@ function calculateAndRenderLeaderboard() {
 
     const playerMedals = getPlayerMedals();
     
+    // --- ANA TABLO HESAPLAMA MOTORU (EKSİKLER GİDERİLDİ) ---
     matchHistory.forEach(game => {
         let isTargetMatch = false;
         if (targetGame === "genel") {
@@ -673,23 +665,23 @@ function calculateAndRenderLeaderboard() {
                     });
 
                     matchPlayers.forEach((pScore, index) => {
-                            let singleName = pScore.name;
-                            if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true, totalPts: 0, gamePoints: {} };
-                            statsMap[singleName].hasPlayed = true;
-                            
-                            let rank = index + 1;
-                            
-                            // EKSİK OLAN VE GERİ EKLENEN SAYIM KODLARI:
-                            if (rank === 1) statsMap[singleName].p1 += 1;
-                            if (rank === 2) statsMap[singleName].p2 += 1;
-                            if (rank === 3) statsMap[singleName].p3 += 1;
-                            if (rank === 4) statsMap[singleName].p4 += 1;
+                        let singleName = pScore.name;
+                        if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true, totalPts: 0, gamePoints: {} };
+                        statsMap[singleName].hasPlayed = true;
+                        
+                        let rank = index + 1;
+                        
+                        // İŞTE BURASI: Kaç kez 1., 2. olduklarını sayan alan eklendi!
+                        if (rank === 1) statsMap[singleName].p1 += 1;
+                        if (rank === 2) statsMap[singleName].p2 += 1;
+                        if (rank === 3) statsMap[singleName].p3 += 1;
+                        if (rank === 4) statsMap[singleName].p4 += 1;
 
-                            if (rank <= 4) {
-                                statsMap[singleName].totalPts += ptsArray[rank - 1]; 
-                                statsMap[singleName].gamePoints[game.gameType] = (statsMap[singleName].gamePoints[game.gameType] || 0) + ptsArray[rank - 1];
-                            }
-                        });
+                        if (rank <= 4) {
+                            statsMap[singleName].totalPts += ptsArray[rank - 1]; 
+                            statsMap[singleName].gamePoints[game.gameType] = (statsMap[singleName].gamePoints[game.gameType] || 0) + ptsArray[rank - 1];
+                        }
+                    });
                 }
             }
         }
