@@ -428,7 +428,8 @@ function calculateAndRenderLeaderboard() {
     
     let statsMap = {};
     currentGroupData.members.forEach(m => {
-        statsMap[m.name] = { name: m.name, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: false, totalPts: 0 };
+        // YENİ: gamePoints nesnesi eklendi (Hangi oyundan kaç puan aldığını tutar)
+        statsMap[m.name] = { name: m.name, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: false, totalPts: 0, gamePoints: {} };
     });
 
     const matchHistory = currentGroupData.recentGames || [];
@@ -461,15 +462,17 @@ function calculateAndRenderLeaderboard() {
                     game.partyScores.forEach(pScore => {
                         let individualNames = pScore.name.includes(" & ") ? pScore.name.split(" & ") : [pScore.name];
                         individualNames.forEach(singleName => {
-                            if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true, totalPts: 0 };
+                            if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true, totalPts: 0, gamePoints: {} };
                             statsMap[singleName].hasPlayed = true;
                             
                             if (pScore.wins === maxWins) { 
                                 statsMap[singleName].wins += 1; 
-                                statsMap[singleName].totalPts += ptsArray[0]; 
+                                statsMap[singleName].totalPts += ptsArray[0];
+                                statsMap[singleName].gamePoints[game.gameType] = (statsMap[singleName].gamePoints[game.gameType] || 0) + ptsArray[0];
                             } else { 
                                 statsMap[singleName].losses += 1; 
-                                statsMap[singleName].totalPts += ptsArray[1]; 
+                                statsMap[singleName].totalPts += ptsArray[1];
+                                statsMap[singleName].gamePoints[game.gameType] = (statsMap[singleName].gamePoints[game.gameType] || 0) + ptsArray[1];
                             }
                         });
                     });
@@ -510,7 +513,7 @@ function calculateAndRenderLeaderboard() {
 
                     matchPlayers.forEach((pScore, index) => {
                         let singleName = pScore.name;
-                        if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true, totalPts: 0 };
+                        if (!statsMap[singleName]) statsMap[singleName] = { name: singleName, p1: 0, p2: 0, p3: 0, p4: 0, wins: 0, losses: 0, hasPlayed: true, totalPts: 0, gamePoints: {} };
                         statsMap[singleName].hasPlayed = true;
                         
                         let rank = index + 1;
@@ -521,6 +524,7 @@ function calculateAndRenderLeaderboard() {
 
                         if (rank <= 4) {
                             statsMap[singleName].totalPts += ptsArray[rank - 1]; 
+                            statsMap[singleName].gamePoints[game.gameType] = (statsMap[singleName].gamePoints[game.gameType] || 0) + ptsArray[rank - 1];
                         }
                     });
                 }
@@ -529,53 +533,112 @@ function calculateAndRenderLeaderboard() {
     });
 
     let statsArray = Object.values(statsMap);
+    
+    // Oyun isimlerini Türkçeye çevirmek için yardımcı liste
+    const gameNamesMap = { pisti: "Pişti", okey: "Okey", "101": "101", batak: "Batak", king: "King" };
 
     if (targetMode === "tekli") {
         statsArray.sort((a, b) => b.totalPts - a.totalPts || b.p1 - a.p1 || b.p2 - a.p2);
         
-        thead.innerHTML = `<tr>
-            <th style="padding:12px; text-align:left;">Oyuncu</th>
-            <th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th>
-            <th style="width:40px; text-align:center;">1.</th>
-            <th style="width:40px; text-align:center;">2.</th>
-            <th style="width:40px; text-align:center;">3.</th>
-            <th style="width:40px; text-align:center;">4.</th>
-        </tr>`;
-        
-        statsArray.forEach(row => {
-            tbody.innerHTML += `
-                <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
-                    <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
-                    <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
-                    <td style="width:40px; text-align:center; color:#1c7b64; font-weight:bold;">${row.p1}</td>
-                    <td style="width:40px; text-align:center;">${row.p2}</td>
-                    <td style="width:40px; text-align:center;">${row.p3}</td>
-                    <td style="width:40px; text-align:center; color:#e74c3c;">${row.p4}</td>
-                </tr>`;
-        });
+        // YENİ: GENEL seçiliyse tablo yapısını farklı çiz
+        if (targetGame === "genel") {
+            thead.innerHTML = `<tr>
+                <th style="padding:12px; text-align:left;">Oyuncu</th>
+                <th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th>
+                <th style="text-align:left;">Puan Kaynağı (Oyunlar)</th>
+            </tr>`;
+            
+            statsArray.forEach(row => {
+                let detailsHtml = "";
+                for (let gType in row.gamePoints) {
+                    if (row.gamePoints[gType] > 0) { // Sadece puanı 0'dan büyük olanları (oynananları) yaz
+                        let gName = gameNamesMap[gType] || gType;
+                        detailsHtml += `<span style="display:inline-block; background:#f8f9fa; border:1px solid #ced4da; border-radius:6px; padding:3px 8px; font-size:11px; margin:2px; color:#2c3e50;">${gName}: <strong style="color:#1c7b64;">${row.gamePoints[gType]}</strong></span>`;
+                    }
+                }
+                if (detailsHtml === "") detailsHtml = '<span style="font-size:11px; color:#adb5bd;">-</span>';
+
+                tbody.innerHTML += `
+                    <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
+                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
+                        <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
+                        <td style="text-align:left; padding:8px;">${detailsHtml}</td>
+                    </tr>`;
+            });
+        } 
+        else {
+            // YENİ: GENEL DIŞINDA BİR OYUN SEÇİLİYSE ESKİ HALİ GİBİ 1., 2., 3., 4. GÖSTER
+            thead.innerHTML = `<tr>
+                <th style="padding:12px; text-align:left;">Oyuncu</th>
+                <th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th>
+                <th style="width:40px; text-align:center;">1.</th>
+                <th style="width:40px; text-align:center;">2.</th>
+                <th style="width:40px; text-align:center;">3.</th>
+                <th style="width:40px; text-align:center;">4.</th>
+            </tr>`;
+            
+            statsArray.forEach(row => {
+                tbody.innerHTML += `
+                    <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
+                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
+                        <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
+                        <td style="width:40px; text-align:center; color:#1c7b64; font-weight:bold;">${row.p1}</td>
+                        <td style="width:40px; text-align:center;">${row.p2}</td>
+                        <td style="width:40px; text-align:center;">${row.p3}</td>
+                        <td style="width:40px; text-align:center; color:#e74c3c;">${row.p4}</td>
+                    </tr>`;
+            });
+        }
     } 
     else { // EŞLİ MOD
         statsArray.sort((a, b) => b.totalPts - a.totalPts || b.wins - a.wins);
 
-        thead.innerHTML = `<tr>
-            <th style="padding:12px; text-align:left;">Oyuncu</th>
-            <th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th>
-            <th style="width:80px; text-align:center; color:#1c7b64;">Galibiyet</th>
-            <th style="width:80px; text-align:center; color:#e74c3c;">Mağlubiyet</th>
-        </tr>`;
-        
-        statsArray.forEach(row => {
-            tbody.innerHTML += `
-                <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
-                    <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
-                    <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
-                    <td style="width:80px; text-align:center; color:#1c7b64; font-weight:bold;">${row.wins} Maç</td>
-                    <td style="width:80px; text-align:center; color:#e74c3c; font-weight:bold;">${row.losses} Maç</td>
-                </tr>`;
-        });
+        // YENİ: GENEL VE EŞLİ SEÇİLİYSE
+        if (targetGame === "genel") {
+            thead.innerHTML = `<tr>
+                <th style="padding:12px; text-align:left;">Oyuncu</th>
+                <th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th>
+                <th style="text-align:left;">Puan Kaynağı (Oyunlar)</th>
+            </tr>`;
+            
+            statsArray.forEach(row => {
+                let detailsHtml = "";
+                for (let gType in row.gamePoints) {
+                    if (row.gamePoints[gType] > 0) {
+                        let gName = gameNamesMap[gType] || gType;
+                        detailsHtml += `<span style="display:inline-block; background:#f8f9fa; border:1px solid #ced4da; border-radius:6px; padding:3px 8px; font-size:11px; margin:2px; color:#2c3e50;">${gName}: <strong style="color:#1c7b64;">${row.gamePoints[gType]}</strong></span>`;
+                    }
+                }
+                if (detailsHtml === "") detailsHtml = '<span style="font-size:11px; color:#adb5bd;">-</span>';
+
+                tbody.innerHTML += `
+                    <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
+                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
+                        <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
+                        <td style="text-align:left; padding:8px;">${detailsHtml}</td>
+                    </tr>`;
+            });
+        } else {
+            // YENİ: BİR OYUN SEÇİLİ VE EŞLİ SEÇİLİYSE ESKİ HALİ (GALİBİYET / MAĞLUBİYET)
+            thead.innerHTML = `<tr>
+                <th style="padding:12px; text-align:left;">Oyuncu</th>
+                <th style="width:60px; text-align:center; color:#f1c40f;">PUAN</th>
+                <th style="width:80px; text-align:center; color:#1c7b64;">Galibiyet</th>
+                <th style="width:80px; text-align:center; color:#e74c3c;">Mağlubiyet</th>
+            </tr>`;
+            
+            statsArray.forEach(row => {
+                tbody.innerHTML += `
+                    <tr style="border-bottom: 1px solid #dee2e6; background: ${row.hasPlayed ? '#ffffff' : '#fdfefe'}; opacity: ${row.hasPlayed ? '1' : '0.6'}">
+                        <td style="padding:12px; text-align:left; font-weight:bold;">👤 ${row.name}</td>
+                        <td style="width:60px; text-align:center; font-weight:bold; font-size:16px; color:#2c3e50; background:#fffdf5;">${row.totalPts}</td>
+                        <td style="width:80px; text-align:center; color:#1c7b64; font-weight:bold;">${row.wins}</td>
+                        <td style="width:80px; text-align:center; color:#e74c3c; font-weight:bold;">${row.losses}</td>
+                    </tr>`;
+            });
+        }
     }
 }
-
 function renderFilteredArchive() {
     const gameFilter = archiveFilterGame.value;
     const modeFilter = archiveFilterMode.value;
