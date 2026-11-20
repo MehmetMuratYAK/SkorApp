@@ -513,13 +513,24 @@ function calculateAndRenderLeaderboard() {
         return [5, 0]; 
     }
 
-    function getPlayerMedals() {
+    // --- YENİ: SEÇİLEN OYUNA ÖZEL GEÇMİŞ SEZON MADALYALARI HESAPLAMA ---
+    function getPlayerMedals(tGame) {
         let medals = {};
         let pastSeasons = currentGroupData.pastSeasons || [];
         
         pastSeasons.forEach(season => {
             let seasonScores = {};
             (season.games || []).forEach(game => {
+                // Sadece hedeflenen oyunun geçmişini hesapla (veya "genel" ise hepsini)
+                let isMatchIncluded = false;
+                if (tGame === "genel") {
+                    isMatchIncluded = true;
+                } else if (game.gameType === tGame) {
+                    isMatchIncluded = true;
+                }
+
+                if (!isMatchIncluded) return;
+
                 let ptsArray = getPointsForMatch(game.gameType, game.gameMode);
                 if (game.gameMode === "esli") {
                     if (game.partyScores && game.partyScores.length > 0) {
@@ -578,25 +589,34 @@ function calculateAndRenderLeaderboard() {
             let sArr = Object.keys(seasonScores).map(k => ({ name: k, pts: seasonScores[k] }));
             sArr.sort((a, b) => b.pts - a.pts);
 
+            // OYUN TÜRÜNE GÖRE İKONLARI BELİRLE
+            let m1 = "🥇", m2 = "🥈", m3 = "🥉";
+            if (tGame === "okey") {
+                m1 = "🏆"; // Okey 1.si için Kupa
+            } else if (tGame === "pisti") {
+                m1 = "🃏"; // Pişti 1.si için Joker
+            }
+
             if (sArr.length > 0 && sArr[0].pts > 0) {
                 if(!medals[sArr[0].name]) medals[sArr[0].name] = "";
-                medals[sArr[0].name] += "🥇";
+                medals[sArr[0].name] += m1;
             }
             if (sArr.length > 1 && sArr[1].pts > 0) {
                 if(!medals[sArr[1].name]) medals[sArr[1].name] = "";
-                medals[sArr[1].name] += "🥈";
+                medals[sArr[1].name] += m2;
             }
             if (sArr.length > 2 && sArr[2].pts > 0) {
                 if(!medals[sArr[2].name]) medals[sArr[2].name] = "";
-                medals[sArr[2].name] += "🥉";
+                medals[sArr[2].name] += m3;
             }
         });
         return medals;
     }
 
-    const playerMedals = getPlayerMedals();
+    // Hedeflenen oyuna göre madalyaları çağır
+    const playerMedals = getPlayerMedals(targetGame);
     
-    // --- ANA TABLO HESAPLAMA MOTORU (EKSİKLER GİDERİLDİ) ---
+    // --- ANA TABLO HESAPLAMA MOTORU ---
     matchHistory.forEach(game => {
         let isTargetMatch = false;
         if (targetGame === "genel") {
@@ -670,8 +690,6 @@ function calculateAndRenderLeaderboard() {
                         statsMap[singleName].hasPlayed = true;
                         
                         let rank = index + 1;
-                        
-                        // İŞTE BURASI: Kaç kez 1., 2. olduklarını sayan alan eklendi!
                         if (rank === 1) statsMap[singleName].p1 += 1;
                         if (rank === 2) statsMap[singleName].p2 += 1;
                         if (rank === 3) statsMap[singleName].p3 += 1;
